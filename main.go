@@ -1,12 +1,10 @@
 package main
 
 import (
+	"./exec"
 	"flag"
 	//"gopkg.in/fsnotify.v1"
-	"io/ioutil"
 	"log"
-	//"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
 )
@@ -18,11 +16,13 @@ import (
  *  go test
  */
 
-var ignore, restartMode, mainFile string
-var debug bool
+var ignore, restartMode, mainFile, cwd string
+var debug, shouldTest, shouldLint bool
 
 func init() {
 	flag.BoolVar(&debug, "debug", false, "run in debug mode")
+	flag.BoolVar(&shouldTest, "test", false, "run tests")
+	flag.BoolVar(&shouldLint, "lint", false, "run lint")
 	flag.StringVar(&mainFile, "main", "main.go", "A go file with func main()")
 	flag.StringVar(&ignore, "ignore", "", "Ignores a file path based on the glob specified")
 	flag.StringVar(&restartMode, "restart-mode", "", "How to handle application restarting. error = restart only on error, build = restart only on successful build, save = restart only on save")
@@ -31,34 +31,27 @@ func init() {
 func main() {
 	flag.Parse()
 
-	mainFile, err := filepath.Abs(mainFile)
-
-	if err != nil {
+	var err error = nil
+	if mainFile, err = filepath.Abs(mainFile); err != nil {
 		log.Fatal(err)
 	}
+	cwd = filepath.Dir(mainFile)
 
-	debugLog(mainFile)
+	debugLog("main file:", mainFile)
+	debugLog("current working directory:", cwd)
 
-	cwd := filepath.Dir(mainFile)
-	execCommand("go", "run", mainFile, cwd)
+	runSteps()
 
 	//watch(files)
 }
 
-func execCommand(command, flags, args, cwd string) {
-	cmd := exec.Command(command, flags, args)
-	cmd.Dir = cwd
+func runSteps() {
 
-	stdout, err := cmd.StdoutPipe()
+	build()
+}
 
-	if err = cmd.Start(); err != nil {
-		log.Fatal(err)
-	}
-
-	output, err := ioutil.ReadAll(stdout)
-
-	cmd.Wait()
-	log.Println(string(output))
+func build() {
+	exec.Command("go", "run", mainFile, cwd)
 }
 
 // func watch(paths []string) chan string {
