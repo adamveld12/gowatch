@@ -1,4 +1,4 @@
-# :recycle: goad
+# :recycle: gowatch
 
 Lint, test, compile and run your app during development time automatically on save, lint error or test failure. 
 Gives hot reload like behavior for you during development time.
