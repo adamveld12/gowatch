@@ -1,26 +1,21 @@
 package project
 
 import (
-	"github.com/golang/lint"
+//"github.com/golang/lint"
 )
 
-lintEnabled := false
-
+var lintEnabled bool = false
 
 func EnableLinting() {
-  lintEnabled = true
+	lintEnabled = true
 }
 
 func RunLint() bool {
-  if !lintEnabled {
-    return true
-  }
+	if !lintEnabled {
+		return true
+	}
 
-  lintSuccessful := true
+	lintSuccessful := true
 
-  
-
-  return lintSuccessful
+	return lintSuccessful
 }
-
-
