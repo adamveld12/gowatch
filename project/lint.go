@@ -10,7 +10,7 @@ func EnableLinting() {
 	lintEnabled = true
 }
 
-func RunLint(mainFile, cwd string) bool {
+func Lint(mainFile, cwd string) bool {
 	if !lintEnabled {
 		return true
 	}

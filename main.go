@@ -15,7 +15,7 @@ import (
  */
 
 var ignore, mainFile, cwd string
-var shouldTest, shouldLint, noRestartOnErr, noRestartOnExit bool
+var shouldTest, shouldLint, noRestartOnErr, noRestartOnExit, quiet bool
 
 func init() {
 	flag.StringVar(&mainFile, "main", "main.go", "A go file with func main().")
@@ -25,13 +25,13 @@ func init() {
 	flag.BoolVar(&shouldTest, "test", false, "Run tests.")
 	flag.BoolVar(&shouldLint, "lint", false, "Run lint.")
 
-	flag.BoolVar(&noRestartOnErr, "error", true, "No restart on error.")
-	flag.BoolVar(&noRestartOnExit, "exit", true, "No restart on exit, regardless of exit code.")
+	flag.BoolVar(&noRestartOnErr, "error", false, "No restart on error.")
+	flag.BoolVar(&noRestartOnExit, "exit", false, "No restart on exit, regardless of exit code.")
 
 	flag.StringVar(&ignore, "ignore", "", "Ignores a file path based on the glob specified.")
 }
 
-var appHandle project.AppHandle = nil
+var appHandle *project.AppHandle
 
 func main() {
 	flag.Parse()
@@ -55,38 +55,45 @@ func main() {
 
 	appHandle = project.CreateAppHandle(mainFile, cwd)
 
-	for {
-		buildSuccess := false
+	buildSuccess := runSteps()
+	exitedSuccessfully := runApp()
 
+	for {
 		select {
 		case updateType := <-fileUpdates:
-			log.Println("Update:", updateType)
+			if !quiet {
+				log.Println("File Update:", updateType)
+			}
 			buildSuccess = runSteps()
-
 		default:
-			if !appHandle.Running() {
+			if !quiet {
+				log.Println("App running?", appHandle.Running())
+				log.Println("Should restart on err?", (!exitedSuccessfully && noRestartOnErr))
+				log.Println("Should restart on exit?", (!appHandle.Running() && noRestartOnExit))
+			}
+			if (!exitedSuccessfully && noRestartOnErr) || (!appHandle.Running() && noRestartOnExit) {
+				continue
+			} else if !appHandle.Running() {
 				buildSuccess = runSteps()
 			}
 		}
-
 		if buildSuccess {
-			runApp()
+			exitedSuccessfully = runApp()
 		}
-
 	}
 }
 
 func runSteps() bool {
-
-	if !quiet {
+	if !quiet && shouldLint {
 		log.Println("Linting", mainFile)
 	}
+
 	lintSuccess := project.Lint(mainFile, cwd)
 
 	testsPassed := false
 	if lintSuccess {
 
-		if !quiet {
+		if !quiet && shouldTest {
 			log.Println("Testing", mainFile)
 		}
 		testsPassed = project.Test(mainFile, cwd)
@@ -105,7 +112,7 @@ func runSteps() bool {
 	return lintSuccess && testsPassed && buildSuccessful
 }
 
-func runApp() {
+func runApp() bool {
 	if !quiet {
 		log.Println("Restarting", mainFile)
 	}
@@ -116,5 +123,5 @@ func runApp() {
 	}
 
 	// run and don't block
-	appHandle.Run()
+	return appHandle.Start()
 }
