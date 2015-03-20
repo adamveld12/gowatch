@@ -5,6 +5,7 @@ import (
 	"github.com/adamveld12/gowatch/project"
 	"log"
 	"path/filepath"
+	"time"
 )
 
 /*
@@ -14,13 +15,12 @@ import (
  *  go test
  */
 
+var waitTime time.Duration
 var ignore, mainFile, cwd string
 var shouldTest, shouldLint, noRestartOnErr, noRestartOnExit, quiet bool
 
 func init() {
 	flag.StringVar(&mainFile, "main", "main.go", "A go file with func main().")
-
-	flag.BoolVar(&quiet, "quiet", true, "Controls debug printing.")
 
 	flag.BoolVar(&shouldTest, "test", false, "Run tests.")
 	flag.BoolVar(&shouldLint, "lint", false, "Run lint.")
@@ -28,7 +28,11 @@ func init() {
 	flag.BoolVar(&noRestartOnErr, "error", false, "No restart on error.")
 	flag.BoolVar(&noRestartOnExit, "exit", false, "No restart on exit, regardless of exit code.")
 
-	flag.StringVar(&ignore, "ignore", "", "Ignores a file path based on the glob specified.")
+	flag.BoolVar(&quiet, "quiet", true, "Controls debug printing.")
+
+	flag.DurationVar(&waitTime, "wait", time.Second, "The amount of time to wait before restarting the process.")
+
+	flag.StringVar(&ignore, "ignore", "", "Comma delimited paths to ignore in the file watcher.")
 }
 
 var appHandle *project.AppHandle
