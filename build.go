@@ -25,20 +25,20 @@ func run(dir, file string) bool {
 		log.Fatal(err)
 	}
 
-	successfulBuild := true
+	successfulRun := true
 	if err := cmd.Wait(); err != nil {
-		successfulBuild = false
+		successfulRun = false
 	}
 
 	if *debug {
-		if successfulBuild {
-			log.Println("succeeded.")
+		if successfulRun {
+			log.Println("Build succeeded.")
 		} else {
-			log.Println("failed.")
+			log.Println("Build failed.")
 		}
 	}
 
-	return successfulBuild
+	return successfulRun
 
 }
 
@@ -63,18 +63,19 @@ func build(dir string) bool {
 		log.Fatal(err)
 	}
 
-	successfulRun := true
+	successfulBuild := true
 	if err := cmd.Wait(); err != nil {
-		successfulRun = false
+		successfulBuild = false
 	}
 
 	if *debug {
-		if successfulRun {
-			log.Println("Build succeeded.")
+		if successfulBuild {
+			log.Println("succeeded.")
 		} else {
-			log.Println("Build failed.")
+			log.Println("failed.")
 		}
 	}
 
-	return successfulRun
+	return successfulBuild
+
 }
