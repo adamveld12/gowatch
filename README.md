@@ -4,37 +4,52 @@ Lint, test, compile and run your app during development time automatically on sa
 Gives hot reload like behavior for you during development time.
 
 ## Usage
+
 ```sh
   gowatch [options]
 ```
 
 Options:
 
-  `-l|-lint`
-  
-    Runs `golint` on the source, restarting the process if the linter returns a warning.
-    
-  `-t|-test`
-  
-    Runs `go test` on the package, restarting the process if any tests fail.
-    
-  -m|-main="main.go"
-  
-    A .go file where main() is defined. This gets passed to go run.
+Note: the option that is set on each argument below is the current default if not passed.
 
-  `-i|-ignore=false`
-  
-  `-n|--no-restart=error|exit`
-  
-    Don't automatically restart the watched package if it ends.
-    gowatch will wait for a change in the source files.
-    If "error", an exit code of 0 will still restart.
-    If "exit", no restart regardless of exit code.
 
-  `-h|--help`
-  
-    Display these usage instructions.
+ -l|-lint=false
 
-  `-q|--quiet=true`
+Runs `golint` on the source, restarting the process if the linter returns a warning.
+
+
   
-    Suppress DEBUG messages
+-t|-test=false
+
+Runs `go test` on the package, restarting the process if any tests fail.
+
+
+  
+-d|-dir="."
+
+A go package to build.
+
+
+
+-i|-ignore=[]
+
+A comma delimited list of globs for the file watcher to  ignore
+
+
+-n|--norestart=
+
+Don't automatically restart the watched package if it ends.
+gowatch will wait for a change in the source files.
+If "error", an exit code of 0 will still restart.
+If "exit", no restart regardless of exit code.
+
+
+-h|--help
+
+Display these usage instructions.
+
+
+-q|--debug=false
+
+Suppress DEBUG messages

@@ -4,14 +4,12 @@ import (
 	"log"
 	"os"
 	"os/exec"
-	"path/filepath"
 )
 
-func run(dir string) bool {
-	_, file := filepath.Split(dir)
+func run(dir, file string) bool {
 
 	if *debug {
-		log.Println("Running ", file)
+		log.Println("Running", file)
 	}
 
 	cmd := exec.Command("./"+file, "run")

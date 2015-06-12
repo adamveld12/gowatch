@@ -6,11 +6,31 @@ import (
 )
 
 type project struct {
-	Directory    string
+	directory    string
+	name         string
 	errorLastRun bool
 }
 
-func New(workingDirectory string) project {
+func (p *project) RunSteps() bool {
+	if buildSucceeded := build(p.directory); buildSucceeded {
+		if runFailed := run(p.directory, p.name); runFailed {
+			return true
+		}
+		return false
+	}
+
+	return false
+}
+
+func (p *project) WorkingDirectory() string {
+	return p.directory
+}
+
+func (p *project) Name() string {
+	return p.name
+}
+
+func New(workingDirectory string) *project {
 
 	workingDirectory, err := filepath.Abs(*dir)
 	if err != nil {
@@ -22,5 +42,7 @@ func New(workingDirectory string) project {
 		cwd = filepath.Dir(workingDirectory)
 	}
 
-	return project{Directory: cwd}
+	_, projectName := filepath.Split(cwd)
+
+	return &project{directory: cwd, name: projectName}
 }

@@ -27,16 +27,15 @@ func main() {
 	}
 
 	proj := New(*dir)
-	if *debug {
-		log.Println("CWD: ", proj.Directory)
-	}
+
+	cwd := proj.WorkingDirectory()
 
 	if *debug {
-		log.Println("Watching", proj.Directory, "for dir changes")
+		log.Println("Watching", cwd, "for dir changes")
 	}
 
-	fileUpdates := getWatch(proj.Directory)
-	buildTestRun(proj.Directory)
+	fileUpdates := getWatch(cwd)
+	proj.RunSteps()
 
 	for {
 		select {
@@ -45,19 +44,8 @@ func main() {
 				log.Println("queueing build", file)
 			}
 
-			buildTestRun(proj.Directory)
+			proj.RunSteps()
+			time.Sleep(*wait)
 		}
 	}
-}
-
-func buildTestRun(cwd string) {
-	if buildSucceeded := build(cwd); buildSucceeded {
-		if exitedSuccessfully := run(cwd); exitedSuccessfully {
-			log.Println("Exited successfully")
-		} else if *restartOnError {
-			log.Println("Exit fail.")
-		}
-	}
-
-	time.Sleep(*wait)
 }
