@@ -5,6 +5,7 @@ import (
 	"io/ioutil"
 	"log"
 	"path/filepath"
+	"time"
 )
 
 func getWatch(dir string) <-chan string {
@@ -19,32 +20,52 @@ func getWatch(dir string) <-chan string {
 			log.Println("Starting watcher routine")
 		}
 		defer watcher.Close()
+
+		lastEvent := ""
+		debouncer := time.AfterFunc(time.Second*5, func() {
+
+			if *debug {
+				log.Println("File Updated:", lastEvent)
+			}
+
+			signal <- lastEvent
+		})
+		debouncer.Stop()
+
+		_, ignoreMe := filepath.Split(dir)
+
 		for {
 			select {
-			// need to debounce this because it could potentially fire a ton of events at once.
-			// maybe wait 1000ms after last channel event before passing an event.Name to the signal channel
 			case event := <-watcher.Events:
-				if *debug {
-					log.Println("Event:", event.Op)
+
+				if event.Name != ignoreMe {
+					if event.Name == lastEvent {
+						debouncer.Reset(time.Second * 2)
+					}
+					lastEvent = event.Name
 				}
-				signal <- event.Name
-				// if event.Op&fsnotify.Write == fsnotify.Write /*&& strings.HasSuffix(event.Name, ".go")*/ {
-				// 	signal <- event.Name
-				// }
+
 			case err := <-watcher.Errors:
 				log.Println("Error:", err.Error())
 			}
 		}
 	}()
 
-	watcher.Add(dir)
-	files(dir, func(fileName string) {
-		err := watcher.Add(fileName)
-		if err != nil {
-			watcher.Close()
-			log.Fatal(err)
-		}
-	})
+	if *debug {
+		log.Println("watching ", dir)
+	}
+
+	if err := watcher.Add(dir); err != nil {
+		watcher.Close()
+		log.Fatal(err)
+	}
+	// files(dir, func(fileName string) {
+	// 	err := watcher.Add(fileName)
+	// 	if err != nil {
+	// 		watcher.Close()
+	// 		log.Fatal(err)
+	// 	}
+	// })
 
 	return signal
 }

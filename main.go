@@ -3,16 +3,18 @@ package main
 import (
 	"flag"
 	"log"
-	"path/filepath"
+	"time"
 )
 
 var (
-	wait   = flag.Int("wait", 0, "# seconds to wait before restarting")
-	ignore = flag.Bool("ignore", false, "comma delimited paths to ignore in the file watcher")
-	test   = flag.Bool("test", false, "run go test on reload")
-	lint   = flag.Bool("lint", false, "run go lint on reload")
-	debug  = flag.Bool("debug", true, "enabled debug print statements")
-	file   = flag.String("file", "main.go", "main file")
+	wait           = flag.Duration("wait", time.Second*0, "# seconds to wait before restarting")
+	ignore         = flag.Bool("ignore", false, "comma delimited paths to ignore in the file watcher")
+	test           = flag.Bool("test", false, "run go test on reload")
+	lint           = flag.Bool("lint", false, "run go lint on reload")
+	debug          = flag.Bool("debug", true, "enabled debug print statements")
+	dir            = flag.String("dir", ".", "working directory ")
+	restartOnError = flag.Bool("onerror", true, "If a non-zero exit code should restart the lint/build/test/run process")
+	stepUpdates    = make(chan bool)
 )
 
 func init() {
@@ -20,26 +22,42 @@ func init() {
 }
 
 func main() {
-	mainFile, err := filepath.Abs(*file)
-	if err != nil {
-		log.Fatal(err)
+	if *debug {
+		log.Println("Debug mode enabled.")
 	}
 
-	cwd := filepath.Dir(mainFile)
+	proj := New(*dir)
+	if *debug {
+		log.Println("CWD: ", proj.Directory)
+	}
 
 	if *debug {
-		log.Println("running", mainFile)
-		log.Println("Watching", cwd, "for file changes")
+		log.Println("Watching", proj.Directory, "for dir changes")
 	}
 
-	fileUpdates := getWatch(cwd)
+	fileUpdates := getWatch(proj.Directory)
+	buildTestRun(proj.Directory)
 
 	for {
 		select {
-		case updateType := <-fileUpdates:
+		case file := <-fileUpdates:
 			if *debug {
-				log.Println(updateType)
+				log.Println("queueing build", file)
 			}
+
+			buildTestRun(proj.Directory)
 		}
 	}
+}
+
+func buildTestRun(cwd string) {
+	if buildSucceeded := build(cwd); buildSucceeded {
+		if exitedSuccessfully := run(cwd); exitedSuccessfully {
+			log.Println("Exited successfully")
+		} else if *restartOnError {
+			log.Println("Exit fail.")
+		}
+	}
+
+	time.Sleep(*wait)
 }
