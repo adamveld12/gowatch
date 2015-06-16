@@ -32,9 +32,9 @@ func run(dir, file string) bool {
 
 	if *debug {
 		if successfulRun {
-			log.Println("Build succeeded.")
+			log.Println("Run succeeded.")
 		} else {
-			log.Println("Build failed.")
+			log.Println("Run failed.")
 		}
 	}
 
