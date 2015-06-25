@@ -31,22 +31,14 @@ func main() {
 
 	cwd := proj.WorkingDirectory()
 
-	if *debug {
-		log.Println("Watching", cwd, "for dir changes")
-	}
-
 	fileUpdates := getWatch(cwd)
 	proj.RunSteps()
 
 	for {
 		select {
 		case file := <-fileUpdates:
-			_, fileName := filepath.Split(file)
-			if fileName == proj.Name() {
-				continue
-			}
 			if *debug {
-				log.Println("queueing build", file)
+				log.Println("\tBuilding", file)
 			}
 
 			proj.RunSteps()

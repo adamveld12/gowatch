@@ -15,7 +15,7 @@ type project struct {
 func (p *project) RunSteps() {
 	if p.kill != nil {
 		if *debug {
-			log.Println("killing process and restarting")
+			log.Println("\tkilling process and restarting")
 		}
 		p.kill <- true
 	}

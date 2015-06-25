@@ -77,13 +77,15 @@ func build(dir string) bool {
 	successfulBuild := true
 	if err := cmd.Wait(); err != nil {
 		successfulBuild = false
+		log.Println("\tbuild error.")
+		log.Println("\t", err)
 	}
 
 	if *debug {
 		if successfulBuild {
-			log.Println("succeeded.")
+			log.Println("\tsucceeded.")
 		} else {
-			log.Println("failed.")
+			log.Println("\tbuild failed.")
 		}
 	}
 

@@ -16,14 +16,10 @@ func getWatch(dir string) <-chan string {
 
 	signal := make(chan string)
 	go func() {
-		if *debug {
-			log.Println("Starting watcher routine")
-		}
 		defer watcher.Close()
 
 		lastEvent := ""
-		debouncer := time.AfterFunc(time.Second*5, func() {
-
+		debouncer := time.AfterFunc(time.Second*2, func() {
 			if *debug {
 				log.Println("File Updated:", lastEvent)
 			}
@@ -32,40 +28,48 @@ func getWatch(dir string) <-chan string {
 		})
 		debouncer.Stop()
 
-		_, ignoreMe := filepath.Split(dir)
+		// so we ignore the go build artifact
+		_, projectName := filepath.Split(dir)
 
 		for {
 			select {
 			case event := <-watcher.Events:
 
-				if event.Name != ignoreMe {
-					if event.Name == lastEvent {
-						debouncer.Reset(time.Second * 2)
-					}
-					lastEvent = event.Name
+				_, eventFile := filepath.Split(event.Name)
+				if projectName == eventFile {
+					continue
 				}
 
+				if event.Name == lastEvent {
+					debouncer.Reset(time.Second * 2)
+				}
+				lastEvent = event.Name
 			case err := <-watcher.Errors:
-				log.Println("Error:", err.Error())
+				log.Println("\tWatcher error:", err.Error())
 			}
 		}
 	}()
 
 	if *debug {
-		log.Println("watching ", dir)
+		log.Println("Starting watcher routine @ ", dir)
+		log.Println("\t\t" + dir + "/.")
 	}
 
 	if err := watcher.Add(dir); err != nil {
 		watcher.Close()
 		log.Fatal(err)
 	}
-	// files(dir, func(fileName string) {
-	// 	err := watcher.Add(fileName)
-	// 	if err != nil {
-	// 		watcher.Close()
-	// 		log.Fatal(err)
-	// 	}
-	// })
+
+	files(dir, func(fileName string) {
+		if *debug {
+			log.Println("\t\t" + fileName + "/")
+		}
+		err := watcher.Add(fileName)
+		if err != nil {
+			watcher.Close()
+			log.Fatal(err)
+		}
+	})
 
 	return signal
 }
@@ -83,14 +87,11 @@ func files(dir string, apply func(string)) {
 			log.Fatal(err)
 		}
 
-		if file.Name() == ".git" {
+		if file.Name() == ".git" || file.Name() == ".gitignore" {
 			continue
 		}
 
 		if file.IsDir() {
-			if *debug {
-				log.Println("Watching", file.Name()+"/")
-			}
 			apply(abs)
 			files(dir+"/"+file.Name(), apply)
 		}
