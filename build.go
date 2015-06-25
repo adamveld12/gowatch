@@ -6,7 +6,7 @@ import (
 	"os/exec"
 )
 
-func run(dir, file string) bool {
+func run(dir, file string) (<-chan bool, chan<- bool) {
 
 	if *debug {
 		log.Println("Running", file)
@@ -25,21 +25,32 @@ func run(dir, file string) bool {
 		log.Fatal(err)
 	}
 
-	successfulRun := true
-	if err := cmd.Wait(); err != nil {
-		successfulRun = false
-	}
-
-	if *debug {
-		if successfulRun {
-			log.Println("Run succeeded.")
+	procSignal := make(chan bool)
+	killSignal := make(chan bool)
+	killed := false
+	go func() {
+		if err := cmd.Wait(); err != nil {
+			procSignal <- false
 		} else {
-			log.Println("Run failed.")
+			procSignal <- true
 		}
-	}
+		close(procSignal)
+		killed = true
 
-	return successfulRun
+	}()
 
+	go func() {
+		for !killed {
+			select {
+			case <-killSignal:
+				cmd.Process.Kill()
+				procSignal <- true
+				killed = true
+			}
+		}
+	}()
+
+	return procSignal, killSignal
 }
 
 // to run, do go build && ./<program>.exe

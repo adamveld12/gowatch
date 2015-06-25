@@ -6,20 +6,29 @@ import (
 )
 
 type project struct {
-	directory    string
-	name         string
-	errorLastRun bool
+	directory string
+	name      string
+	kill      chan<- bool
+	isDone    <-chan bool
 }
 
-func (p *project) RunSteps() bool {
-	if buildSucceeded := build(p.directory); buildSucceeded {
-		if runFailed := run(p.directory, p.name); runFailed {
-			return true
+func (p *project) RunSteps() {
+	if p.kill != nil {
+		if *debug {
+			log.Println("killing process and restarting")
 		}
-		return false
+		p.kill <- true
 	}
 
-	return false
+	if built := build(p.directory); built {
+		finish, kill := run(p.directory, p.name)
+		p.kill = kill
+		go func() {
+			if <-finish {
+				kill = nil
+			}
+		}()
+	}
 }
 
 func (p *project) WorkingDirectory() string {
