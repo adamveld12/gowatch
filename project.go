@@ -39,7 +39,7 @@ func (p *project) Name() string {
 	return p.name
 }
 
-func New(workingDirectory string) *project {
+func createProject(workingDirectory string) *project {
 
 	workingDirectory, err := filepath.Abs(*dir)
 	if err != nil {

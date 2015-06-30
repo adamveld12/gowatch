@@ -1,11 +1,12 @@
 package main
 
 import (
-	"gopkg.in/fsnotify.v1"
 	"io/ioutil"
 	"log"
 	"path/filepath"
 	"time"
+
+	"gopkg.in/fsnotify.v1"
 )
 
 func getWatch(dir string) <-chan string {
@@ -60,11 +61,12 @@ func getWatch(dir string) <-chan string {
 		log.Fatal(err)
 	}
 
-	files(dir, func(fileName string) {
+	files(dir, func(filePath string) {
 		if *debug {
-			log.Println("\t\t" + fileName + "/")
+			log.Println("\t\t" + filePath + "/")
 		}
-		err := watcher.Add(fileName)
+
+		err := watcher.Add(filePath)
 		if err != nil {
 			watcher.Close()
 			log.Fatal(err)
@@ -81,7 +83,22 @@ func files(dir string, apply func(string)) {
 	}
 
 	for _, file := range entries {
-		abs, err := filepath.Abs(dir + "/" + file.Name())
+
+		abs, err := filepath.Abs(filepath.Join(dir, file.Name()))
+		shouldContinue := false
+		for _, path := range ignorePaths {
+			if match, _ := filepath.Match(filepath.Join(dir, path), abs); match {
+				if *debug {
+					log.Println("\t\tignoring", abs)
+				}
+				shouldContinue = true
+				break
+			}
+		}
+
+		if shouldContinue {
+			continue
+		}
 
 		if err != nil {
 			log.Fatal(err)

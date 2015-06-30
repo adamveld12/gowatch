@@ -7,9 +7,8 @@ import (
 )
 
 func run(dir, file string) (<-chan bool, chan<- bool) {
-
 	if *debug {
-		log.Println("Running", file)
+		log.Println("running", file)
 	}
 
 	cmd := exec.Command("./"+file, "run")
@@ -55,15 +54,26 @@ func run(dir, file string) (<-chan bool, chan<- bool) {
 
 // to run, do go build && ./<program>.exe
 func build(dir string) bool {
+	return gocmd(dir, "build", "")
+}
+
+func test(dir string) bool {
+	return gocmd(dir, "test", "")
+}
+
+func gocmd(cwd, command, target string) bool {
 	if *debug {
-		log.Println("building ", dir)
+		log.Println("running", command)
 	}
 
 	executable, _ := exec.LookPath("go")
 
-	cmd := exec.Command(executable, "build")
+	if target != "" {
+		target = " " + target
+	}
+	cmd := exec.Command(executable, command+target)
 
-	cmd.Dir = dir
+	cmd.Dir = cwd
 	cmd.Env = os.Environ()
 
 	cmd.Stdin = os.Stdin
@@ -74,21 +84,18 @@ func build(dir string) bool {
 		log.Fatal(err)
 	}
 
-	successfulBuild := true
+	success := true
 	if err := cmd.Wait(); err != nil {
-		successfulBuild = false
-		log.Println("\tbuild error.")
-		log.Println("\t", err)
+		success = false
+		log.Println("\t", command, "failed.")
+		log.Println("\t", err.Error())
 	}
 
 	if *debug {
-		if successfulBuild {
-			log.Println("\tsucceeded.")
-		} else {
-			log.Println("\tbuild failed.")
+		if success {
+			log.Println("\t", command, "succeeded.")
 		}
 	}
 
-	return successfulBuild
-
+	return success
 }
