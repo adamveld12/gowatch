@@ -53,7 +53,7 @@ func getWatch(dir string) <-chan string {
 
 	if *debug {
 		log.Println("Starting watcher routine @ ", dir)
-		log.Println("\t\t" + dir + "/.")
+		log.Println("\t " + dir + "/.")
 	}
 
 	if err := watcher.Add(dir); err != nil {
@@ -63,7 +63,7 @@ func getWatch(dir string) <-chan string {
 
 	files(dir, func(filePath string) {
 		if *debug {
-			log.Println("\t\t" + filePath + "/")
+			log.Println("\t " + filePath + "/")
 		}
 
 		err := watcher.Add(filePath)
@@ -89,7 +89,7 @@ func files(dir string, apply func(string)) {
 		for _, path := range ignorePaths {
 			if match, _ := filepath.Match(filepath.Join(dir, path), abs); match {
 				if *debug {
-					log.Println("\t\tignoring", abs)
+					log.Println("\t ignoring", abs)
 				}
 				shouldContinue = true
 				break

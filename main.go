@@ -8,7 +8,7 @@ import (
 )
 
 var (
-	wait           = flag.Duration("wait", time.Second*0, "# seconds to wait before restarting")
+	wait           = flag.Duration("wait", time.Second, "# seconds to wait before restarting")
 	ignore         = flag.String("ignore", "", "comma delimited paths to ignore in the file watcher")
 	debug          = flag.Bool("debug", true, "enabled debug print statements")
 	dir            = flag.String("dir", ".", "working directory ")
@@ -29,7 +29,7 @@ func main() {
 	if *debug {
 		log.Println("Debug mode enabled.")
 		if !*restartOnError {
-			log.Println("Restart on error disabled")
+			log.Println("\tRestart on error disabled")
 		}
 		for _, files := range ignorePaths {
 			log.Println("\tignoring", files)
@@ -55,21 +55,23 @@ func main() {
 
 			lastErr = nil
 			time.Sleep(*wait)
-
-		case <-proj.isDone:
-			if *debug {
-				log.Println("App EXITED")
-			}
-			time.Sleep(*wait)
 		default:
-			if *restartOnError || lastErr == nil && proj.kill == nil {
-				lastErr = proj.RunSteps()
+			if !*restartOnError && lastErr != nil {
+				continue
+			} else if proj.kill == nil {
+				if lastErr != nil {
+					log.Println(lastErr)
+				}
+
+				errorChan := proj.RunSteps()
+				lastErr = <-errorChan
+
 				if lastErr != nil {
 					if *debug {
 						log.Println("run step error")
 					}
-					time.Sleep(*wait)
 				}
+				time.Sleep(*wait)
 			}
 		}
 

@@ -10,7 +10,7 @@ type project struct {
 	directory string
 	name      string
 	kill      chan<- bool
-	isDone    <-chan bool
+	isDone    <-chan error
 }
 
 type StepResult error
@@ -22,32 +22,34 @@ var (
 	LintFailed  = errors.New("Lint failed")
 )
 
-func (p *project) RunSteps() StepResult {
+func (p *project) RunSteps() <-chan error {
 	if p.kill != nil {
 		if *debug {
 			log.Println("\tkilling process and restarting")
 		}
 		p.kill <- true
 	}
+	isDoneSender := make(chan error, 1)
 
 	if built := build(p.directory); built {
 
 		finish, kill := run(p.directory, p.name)
 		p.kill = kill
-		p.isDone = finish
+		p.isDone = isDoneSender
 
 		go func() {
-			if <-finish {
+			if exitError := <-finish; exitError != nil {
 				p.kill = nil
+				isDoneSender <- exitError
 				p.isDone = nil
 			}
 		}()
 
 	} else {
-		return BuildFailed
+		isDoneSender <- BuildFailed
 	}
 
-	return nil
+	return isDoneSender
 }
 
 func (p *project) WorkingDirectory() string {
