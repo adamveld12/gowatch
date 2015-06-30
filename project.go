@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"log"
 	"path/filepath"
 )
@@ -12,7 +13,16 @@ type project struct {
 	isDone    <-chan bool
 }
 
-func (p *project) RunSteps() {
+type StepResult error
+
+var (
+	BuildFailed = errors.New("Build failed")
+	RunFailed   = errors.New("App exited with non-zero exit code")
+	TestFailed  = errors.New("Test failed")
+	LintFailed  = errors.New("Lint failed")
+)
+
+func (p *project) RunSteps() StepResult {
 	if p.kill != nil {
 		if *debug {
 			log.Println("\tkilling process and restarting")
@@ -21,14 +31,23 @@ func (p *project) RunSteps() {
 	}
 
 	if built := build(p.directory); built {
+
 		finish, kill := run(p.directory, p.name)
 		p.kill = kill
+		p.isDone = finish
+
 		go func() {
 			if <-finish {
-				kill = nil
+				p.kill = nil
+				p.isDone = nil
 			}
 		}()
+
+	} else {
+		return BuildFailed
 	}
+
+	return nil
 }
 
 func (p *project) WorkingDirectory() string {

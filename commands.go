@@ -27,6 +27,7 @@ func run(dir, file string) (<-chan bool, chan<- bool) {
 	procSignal := make(chan bool)
 	killSignal := make(chan bool)
 	killed := false
+
 	go func() {
 		if err := cmd.Wait(); err != nil {
 			procSignal <- false
@@ -35,18 +36,13 @@ func run(dir, file string) (<-chan bool, chan<- bool) {
 		}
 		close(procSignal)
 		killed = true
-
 	}()
 
 	go func() {
-		for !killed {
-			select {
-			case <-killSignal:
-				cmd.Process.Kill()
-				procSignal <- true
-				killed = true
-			}
-		}
+		<-killSignal
+		cmd.Process.Kill()
+		procSignal <- true
+		killed = true
 	}()
 
 	return procSignal, killSignal
