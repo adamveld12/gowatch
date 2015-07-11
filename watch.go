@@ -4,6 +4,7 @@ import (
 	"io/ioutil"
 	"log"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"gopkg.in/fsnotify.v1"
@@ -83,11 +84,11 @@ func files(dir string, apply func(string)) {
 	}
 
 	for _, file := range entries {
-
 		abs, err := filepath.Abs(filepath.Join(dir, file.Name()))
 		shouldContinue := false
+
 		for _, path := range ignorePaths {
-			if match, _ := filepath.Match(filepath.Join(dir, path), abs); match {
+			if match, _ := filepath.Match(path, strings.TrimPrefix(abs, *pwd)); match {
 				if *debug {
 					log.Println("\t ignoring", abs)
 				}

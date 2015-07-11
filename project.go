@@ -62,7 +62,7 @@ func (p *project) Name() string {
 
 func createProject(workingDirectory string) *project {
 
-	workingDirectory, err := filepath.Abs(*dir)
+	workingDirectory, err := filepath.Abs(workingDirectory)
 	if err != nil {
 		log.Println("-dir not found", err)
 	}

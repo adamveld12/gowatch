@@ -11,7 +11,7 @@ var (
 	wait           = flag.Duration("wait", time.Second, "# seconds to wait before restarting")
 	ignore         = flag.String("ignore", "", "comma delimited paths to ignore in the file watcher")
 	debug          = flag.Bool("debug", true, "enabled debug print statements")
-	dir            = flag.String("dir", ".", "working directory ")
+	pwd            = flag.String("dir", ".", "working directory ")
 	restartOnError = flag.Bool("onerror", true, "If a non-zero exit code should restart the lint/build/test/run process")
 	//test           = flag.Bool("test", false, "run go test on reload")
 	//lint           = flag.Bool("lint", false, "run go lint on reload")
@@ -36,8 +36,10 @@ func main() {
 		}
 	}
 
-	proj := createProject(*dir)
+	proj := createProject(*pwd)
 	cwd := proj.WorkingDirectory()
+	*pwd = cwd
+
 	fileUpdates := getWatch(cwd)
 
 	var lastErr error = nil
