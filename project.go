@@ -3,15 +3,11 @@ package main
 import (
 	"errors"
 	"log"
+	"os"
+	"os/exec"
 	"path/filepath"
+	"strings"
 )
-
-type project struct {
-	directory string
-	name      string
-	kill      chan<- bool
-	isDone    <-chan error
-}
 
 type StepResult error
 
@@ -22,57 +18,108 @@ var (
 	LintFailed  = errors.New("Lint failed")
 )
 
-func (p *project) RunSteps() <-chan error {
-	if p.kill != nil {
-		if *debug {
-			log.Println("\tkilling process and restarting")
-		}
-		p.kill <- true
+func build(projectDirectory string) bool {
+	goPath := os.Getenv("GOPATH")
+	cmd := gocmd("build", strings.TrimPrefix(projectDirectory, filepath.Join(goPath, "src/")+"/"), projectDirectory)
+	err := cmd.Run()
+	return err == nil
+}
+
+func test(projectDirectory string) bool {
+	return true
+}
+
+func lint(projectDirectory string) bool {
+	return true
+}
+
+func runProject(projectDirectory string, arguments string) (<-chan StepResult, chan<- os.Signal) {
+	routineSync, isDone, killApp := make(chan bool), make(chan StepResult), make(chan os.Signal)
+
+	// build
+	if !build(projectDirectory) {
+		isDone <- BuildFailed
+		close(isDone)
+		return isDone, killApp
 	}
-	isDoneSender := make(chan error, 1)
 
-	if built := build(p.directory); built {
+	// lint
+	if *shouldLint && !lint(projectDirectory) {
+		isDone <- LintFailed
+		close(isDone)
+		return isDone, killApp
+	}
 
-		finish, kill := run(p.directory, p.name)
-		p.kill = kill
-		p.isDone = isDoneSender
+	// test
+	if *shouldTest && !test(projectDirectory) {
+		isDone <- TestFailed
+		close(isDone)
+		return isDone, killApp
+	}
 
-		go func() {
-			if exitError := <-finish; exitError != nil {
-				p.kill = nil
-				isDoneSender <- exitError
-				p.isDone = nil
+	cmd := run(projectDirectory, arguments)
+	exited := false
+
+	go func() {
+		for {
+			select {
+			case exitSignal := <-killApp:
+				if exitSignal != nil {
+					cmd.Process.Signal(exitSignal)
+				}
+				if *debug {
+					log.Println("\tSending kill signal...")
+				}
+				return
+			default:
+				if exited {
+					return
+				}
 			}
-		}()
+		}
 
-	} else {
-		isDoneSender <- BuildFailed
-	}
+	}()
 
-	return isDoneSender
+	go func() {
+		close(routineSync)
+		err := cmd.Run()
+
+		if *debug {
+			log.Println("App has exited", err)
+		}
+
+		exited = true
+		isDone <- err
+		close(isDone)
+	}()
+
+	<-routineSync
+
+	return isDone, killApp
 }
 
-func (p *project) WorkingDirectory() string {
-	return p.directory
+func run(projectDirectory, arguments string) *exec.Cmd {
+	_, command := filepath.Split(projectDirectory)
+	cmd := exec.Command("./"+command, arguments)
+	cmd.Dir = projectDirectory
+	cmd.Env = os.Environ()
+
+	cmd.Stdin = os.Stdin
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+
+	return cmd
 }
 
-func (p *project) Name() string {
-	return p.name
-}
+func gocmd(command, arg, projectDirectory string) *exec.Cmd {
 
-func createProject(workingDirectory string) *project {
+	cmd := exec.Command("go", command, arg)
+	cmd.Dir = projectDirectory
+	cmd.Env = os.Environ()
 
-	workingDirectory, err := filepath.Abs(workingDirectory)
-	if err != nil {
-		log.Println("-dir not found", err)
-	}
+	cmd.Stdin = os.Stdin
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
 
-	cwd := workingDirectory
-	if filepath.Ext(workingDirectory) != "" {
-		cwd = filepath.Dir(workingDirectory)
-	}
-
-	_, projectName := filepath.Split(cwd)
-
-	return &project{directory: cwd, name: projectName}
+	return cmd
 }

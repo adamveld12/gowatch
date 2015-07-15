@@ -3,19 +3,23 @@ package main
 import (
 	"flag"
 	"log"
+	"os"
+	"path/filepath"
 	"strings"
 	"time"
 )
 
 var (
-	wait           = flag.Duration("wait", time.Second, "# seconds to wait before restarting")
+	wait           = flag.Duration("wait", time.Second*2, "# seconds to wait before restarting")
 	ignore         = flag.String("ignore", "", "comma delimited paths to ignore in the file watcher")
 	debug          = flag.Bool("debug", true, "enabled debug print statements")
 	pwd            = flag.String("dir", ".", "working directory ")
-	restartOnError = flag.Bool("onerror", true, "If a non-zero exit code should restart the lint/build/test/run process")
-	//test           = flag.Bool("test", false, "run go test on reload")
-	//lint           = flag.Bool("lint", false, "run go lint on reload")
-	//stepUpdates = make(chan bool)
+	restartOnExit  = flag.Bool("onexit", true, "If the app sould restart on exit, regardless of exit code")
+	restartOnError = flag.Bool("onerror", true, "If the app should restart if a lint/test/build/non-zero exit code occurs")
+	appArgs        = flag.String("args", "", "arguments to pass to the underlying app")
+	shouldTest     = flag.Bool("test", false, "run go test on reload")
+	shouldLint     = flag.Bool("lint", false, "run go lint on reload")
+
 	ignorePaths = []string{}
 )
 
@@ -36,46 +40,36 @@ func main() {
 		}
 	}
 
-	proj := createProject(*pwd)
-	cwd := proj.WorkingDirectory()
-	*pwd = cwd
+	*pwd, _ = filepath.Abs(*pwd)
+	fileUpdates, killWatcher := getWatch(*pwd)
 
-	fileUpdates := getWatch(cwd)
+	done := false
+	appStopped, killApp := make(<-chan StepResult), make(chan<- os.Signal)
 
-	var lastErr error = nil
-	for {
+	defer func() {
+		killWatcher <- true
+		if killApp != nil {
+			killApp <- os.Kill
+		}
+		done = true
+	}()
 
-		select {
-		case <-fileUpdates:
-			if *debug {
-				log.Println("File update, starting build steps.")
-			}
-
-			if proj.kill != nil {
-				proj.kill <- true
-			}
-
-			lastErr = nil
-			time.Sleep(*wait)
-		default:
-			if !*restartOnError && lastErr != nil {
-				continue
-			} else if proj.kill == nil {
-				if lastErr != nil {
-					log.Println(lastErr)
+	go func() {
+		for !done {
+			select {
+			case <-fileUpdates:
+				if killApp != nil {
+					killApp <- os.Kill
 				}
-
-				errorChan := proj.RunSteps()
-				lastErr = <-errorChan
-
-				if lastErr != nil {
-					if *debug {
-						log.Println("run step error")
-					}
-				}
-				time.Sleep(*wait)
 			}
 		}
 
+	}()
+
+	for {
+		appStopped, killApp = runProject(*pwd, *appArgs)
+		exitError := <-appStopped
+		log.Println(exitError)
+		time.Sleep(*wait)
 	}
 }

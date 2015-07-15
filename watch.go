@@ -10,13 +10,14 @@ import (
 	"gopkg.in/fsnotify.v1"
 )
 
-func getWatch(dir string) <-chan string {
+func getWatch(dir string) (<-chan string, chan<- bool) {
 	watcher, err := fsnotify.NewWatcher()
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	signal := make(chan string)
+	signal, killChan := make(chan string), make(chan bool)
+
 	go func() {
 		defer watcher.Close()
 
@@ -25,12 +26,12 @@ func getWatch(dir string) <-chan string {
 			if *debug {
 				log.Println("File Updated:", lastEvent)
 			}
-
+			lastEvent = ""
 			signal <- lastEvent
 		})
+
 		debouncer.Stop()
 
-		// so we ignore the go build artifact
 		_, projectName := filepath.Split(dir)
 
 		for {
@@ -45,9 +46,16 @@ func getWatch(dir string) <-chan string {
 				if event.Name == lastEvent {
 					debouncer.Reset(time.Second * 2)
 				}
+
 				lastEvent = event.Name
+
 			case err := <-watcher.Errors:
 				log.Println("\tWatcher error:", err.Error())
+			case <-killChan:
+				if *debug {
+					log.Println("Shit fuck exiting")
+				}
+				return
 			}
 		}
 	}()
@@ -74,7 +82,7 @@ func getWatch(dir string) <-chan string {
 		}
 	})
 
-	return signal
+	return signal, killChan
 }
 
 func files(dir string, apply func(string)) {
