@@ -13,7 +13,7 @@ import (
 func getWatch(dir string) (<-chan string, chan<- bool) {
 	watcher, err := fsnotify.NewWatcher()
 	if err != nil {
-		log.Fatal(err)
+		log.Fatal("Could not create file watcher", err)
 	}
 
 	signal, killChan := make(chan string), make(chan bool)
@@ -48,13 +48,9 @@ func getWatch(dir string) (<-chan string, chan<- bool) {
 				}
 
 				lastEvent = event.Name
-
 			case err := <-watcher.Errors:
-				log.Println("\tWatcher error:", err.Error())
+				log.Println("\tWatcher error:", err)
 			case <-killChan:
-				if *debug {
-					log.Println("Shit fuck exiting")
-				}
 				return
 			}
 		}
@@ -67,7 +63,7 @@ func getWatch(dir string) (<-chan string, chan<- bool) {
 
 	if err := watcher.Add(dir); err != nil {
 		watcher.Close()
-		log.Fatal(err)
+		log.Fatal(err, ": ", dir)
 	}
 
 	files(dir, func(filePath string) {
@@ -78,7 +74,7 @@ func getWatch(dir string) (<-chan string, chan<- bool) {
 		err := watcher.Add(filePath)
 		if err != nil {
 			watcher.Close()
-			log.Fatal(err)
+			log.Fatal(err, ": ", filePath)
 		}
 	})
 
@@ -88,7 +84,7 @@ func getWatch(dir string) (<-chan string, chan<- bool) {
 func files(dir string, apply func(string)) {
 	entries, err := ioutil.ReadDir(dir)
 	if err != nil {
-		log.Fatal(err)
+		log.Fatal(err, ": ", dir)
 	}
 
 	for _, file := range entries {
