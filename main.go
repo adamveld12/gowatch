@@ -12,7 +12,7 @@ import (
 var (
 	wait           = flag.Duration("wait", time.Second*2, "# seconds to wait before restarting")
 	ignore         = flag.String("ignore", "", "comma delimited paths to ignore in the file watcher")
-	debug          = flag.Bool("debug", true, "enabled debug print statements")
+	debug          = flag.Bool("debug", false, "enabled debug print statements")
 	pwd            = flag.String("dir", ".", "working directory ")
 	restartOnExit  = flag.Bool("onexit", true, "If the app sould restart on exit, regardless of exit code")
 	restartOnError = flag.Bool("onerror", true, "If the app should restart if a lint/test/build/non-zero exit code occurs")
