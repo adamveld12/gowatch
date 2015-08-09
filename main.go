@@ -14,11 +14,11 @@ var (
 	debug          = flag.Bool("debug", false, "enabled debug print statements")
 	wait           = flag.Duration("wait", time.Second*2, "# seconds to wait before restarting")
 	ignore         = flag.String("ignore", "", "comma delimited paths to ignore in the file watcher")
-	restartOnExit  = flag.Bool("onexit", true, "If the app sould restart on exit, regardless of exit code")
+	restartOnExit  = flag.Bool("onexit", false, "If the app sould restart on exit, regardless of exit code")
 	restartOnError = flag.Bool("onerror", true, "If the app should restart if a lint/test/build/non-zero exit code occurs")
 	appArgs        = flag.String("args", "", "arguments to pass to the underlying app")
 	shouldTest     = flag.Bool("test", false, "run go test on reload")
-	shouldLint     = flag.Bool("lint", false, "run go lint on reload")
+	shouldLint     = flag.Bool("lint", true, "run go lint on reload")
 
 	ignorePaths = []string{}
 )
@@ -52,14 +52,16 @@ func main() {
 	watchNotification, _ := startWatch(projectPath)
 
 	for {
+		time.Sleep(*wait)
 		buildResult, killProcess := executeBuildSteps(projectPath, *appArgs)
 		exit := false
 		syncer := make(chan bool)
 
 		go func() {
+			close(syncer)
 			for !exit {
-				close(syncer)
 				select {
+				default:
 				case <-watchNotification:
 					select {
 					case killProcess <- os.Kill:
@@ -67,14 +69,18 @@ func main() {
 					return
 				}
 			}
+			log.Println("[DEBUG] exiting routine")
 		}()
-		<-syncer
 
-		if err := <-buildResult; err != nil {
-			log.Println("[DEBUG] build result", err)
-		}
+		<-syncer
+		err := <-buildResult
 		exit = true
-		time.Sleep(*wait)
+		if err != nil && *restartOnError && *restartOnExit {
+			log.Println("[DEBUG] build result", err)
+		} else if !*restartOnError || !*restartOnExit {
+			log.Println("[DEBUG] waiting on file notification")
+			<-watchNotification
+		}
 	}
 
 }

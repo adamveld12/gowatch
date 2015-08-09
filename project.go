@@ -2,10 +2,13 @@ package main
 
 import (
 	"errors"
+	"io/ioutil"
 	"log"
 	"os"
 	"os/exec"
 	"path/filepath"
+
+	linter "github.com/golang/lint"
 )
 
 // StepResult the result of a build step
@@ -65,12 +68,42 @@ func test(projectDirectory string) bool {
 
 func lint(projectDirectory string) bool {
 	log.Println("[DEBUG] linting code...")
+	lint := &linter.Linter{}
+
+	files := make(map[string][]byte)
+	filepath.Walk(projectDirectory, func(p string, info os.FileInfo, err error) error {
+		if filepath.Ext(p) == ".go" {
+
+			f, err := os.Open(p)
+			if err != nil {
+				return err
+			}
+
+			if files[p], err = ioutil.ReadAll(f); err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+
+	problems, err := lint.LintFiles(files)
+	if err != nil {
+		log.Println("[ERROR]", err)
+		return false
+	} else if len(problems) > 0 {
+		log.Println("[DEBUG] Lint issues found")
+		for _, p := range problems {
+			log.Println("[ERROR]", p.String())
+		}
+		return false
+	}
+
 	return true
 }
 
 func executeBuildSteps(projectDirectory, appArguments string) (<-chan StepResult, chan<- os.Signal) {
 
-	isDone, killApp := make(chan StepResult), make(chan os.Signal)
+	isDone, killApp := make(chan StepResult, 1), make(chan os.Signal)
 
 	if !build(projectDirectory) {
 		isDone <- ErrorBuildFailed

@@ -2,6 +2,7 @@ package main
 
 import (
 	"log"
+	"os"
 	"path/filepath"
 	"time"
 
@@ -23,10 +24,17 @@ func startWatch(dir string) (<-chan string, chan<- bool) {
 	lastEvent, timeSinceLastEvent := "", time.Now().AddDate(-1, 0, 0)
 	_, projectName := filepath.Split(dir)
 
-	if err := watcher.Add(dir); err != nil {
-		watcher.Close()
-		log.Fatal(err, ": ", dir)
-	}
+	filepath.Walk(dir, func(p string, info os.FileInfo, err error) error {
+		if info.IsDir() {
+			if shouldIgnore(info.Name()) {
+				return filepath.SkipDir
+			} else if err := watcher.Add(p); err != nil {
+				log.Println("[DEBUG] error adding watched dir", p, info.Name(), err)
+				return err
+			}
+		}
+		return nil
+	})
 
 	go func() {
 		defer watcher.Close()
@@ -59,11 +67,12 @@ func startWatch(dir string) (<-chan string, chan<- bool) {
 				fileUpdateNotification <- event.Name
 
 			case err := <-watcher.Errors:
-				log.Println("[DEBUG] watcher error:", err)
+				log.Println("[ERROR] watcher error:", err)
 
 			case <-haltWatch:
 				log.Println("[DEBUG] killing watcher")
 				return
+			default:
 			}
 		}
 	}()
