@@ -24,15 +24,15 @@ Note: the option that is set on each argument below is the current default if no
 
 `-ignore=[]`  A comma delimited list of globs for the file watcher to ignore, right now its more like a file extension glob since that's all I really use it for (ie \*.html or \*.css)
 
- -onexit=true  If the app should restart on exit, regardless of exit code
+ `-onexit=true`  If the app should restart on exit, regardless of exit code
 
 `-onerror=true` If the app should restart on lint/test/build/non-zero exit code
 
 `-wait=1s` How long to wait before starting up the build after an exit.
 
- -test=false Should tests be run on reload
+ `-test=false` Should tests be run on reload
 
- -lint=true Should the source be linted on reload
+ `-lint=true` Should the source be linted on reload
 
 `-h|-help` Display these usage instructions.
 
