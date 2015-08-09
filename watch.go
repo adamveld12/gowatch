@@ -1,122 +1,72 @@
 package main
 
 import (
-	"io/ioutil"
 	"log"
 	"path/filepath"
-	"strings"
 	"time"
 
 	"gopkg.in/fsnotify.v1"
 )
 
-func getWatch(dir string) (<-chan string, chan<- bool) {
+func shouldIgnore(file string) bool {
+	return false
+}
+
+func startWatch(dir string) (<-chan string, chan<- bool) {
 	watcher, err := fsnotify.NewWatcher()
 	if err != nil {
 		log.Fatal("Could not create file watcher", err)
 	}
 
-	signal, killChan := make(chan string), make(chan bool)
+	fileUpdateNotification, haltWatch := make(chan string), make(chan bool)
 
-	go func() {
-		defer watcher.Close()
-
-		lastEvent := ""
-		debouncer := time.AfterFunc(time.Second*2, func() {
-			if *debug {
-				log.Println("File Updated:", lastEvent)
-			}
-			lastEvent = ""
-			signal <- lastEvent
-		})
-
-		debouncer.Stop()
-
-		_, projectName := filepath.Split(dir)
-
-		for {
-			select {
-			case event := <-watcher.Events:
-
-				_, eventFile := filepath.Split(event.Name)
-				if projectName == eventFile {
-					continue
-				}
-
-				if event.Name == lastEvent {
-					debouncer.Reset(time.Second * 2)
-				}
-
-				lastEvent = event.Name
-			case err := <-watcher.Errors:
-				log.Println("\tWatcher error:", err)
-			case <-killChan:
-				return
-			}
-		}
-	}()
-
-	if *debug {
-		log.Println("Starting watcher routine @ ", dir)
-		log.Println("\t " + dir + "/.")
-	}
+	lastEvent, timeSinceLastEvent := "", time.Now().AddDate(-1, 0, 0)
+	_, projectName := filepath.Split(dir)
 
 	if err := watcher.Add(dir); err != nil {
 		watcher.Close()
 		log.Fatal(err, ": ", dir)
 	}
 
-	files(dir, func(filePath string) {
-		if *debug {
-			log.Println("\t " + filePath + "/")
-		}
+	go func() {
+		defer watcher.Close()
 
-		err := watcher.Add(filePath)
-		if err != nil {
-			watcher.Close()
-			log.Fatal(err, ": ", filePath)
-		}
-	})
+		for {
+			select {
+			case event := <-watcher.Events:
+				_, filename := filepath.Split(event.Name)
 
-	return signal, killChan
-}
-
-func files(dir string, apply func(string)) {
-	entries, err := ioutil.ReadDir(dir)
-	if err != nil {
-		log.Fatal(err, ": ", dir)
-	}
-
-	for _, file := range entries {
-		abs, err := filepath.Abs(filepath.Join(dir, file.Name()))
-		shouldContinue := false
-
-		for _, path := range ignorePaths {
-			if match, _ := filepath.Match(path, strings.TrimPrefix(abs, *pwd)); match {
-				if *debug {
-					log.Println("\t ignoring", abs)
+				if projectName == filename || event.Op&fsnotify.Chmod == fsnotify.Chmod {
+					log.Println("[DEBUG] skipping restart")
+					continue
 				}
-				shouldContinue = true
-				break
+
+				if event.Name == lastEvent && timeSinceLastEvent.Add(time.Second).After(time.Now()) {
+					log.Println("[DEBUG] skipping restart")
+					timeSinceLastEvent = time.Now()
+					continue
+				}
+
+				if shouldIgnore(event.Name) {
+					log.Println("[DEBUG] ignoring update to ", event.Name)
+					continue
+				}
+
+				lastEvent = event.Name
+				timeSinceLastEvent = time.Now()
+
+				log.Println("[DEBUG] updated", event)
+				fileUpdateNotification <- event.Name
+
+			case err := <-watcher.Errors:
+				log.Println("[DEBUG] watcher error:", err)
+
+			case <-haltWatch:
+				log.Println("[DEBUG] killing watcher")
+				return
 			}
 		}
+	}()
 
-		if shouldContinue {
-			continue
-		}
-
-		if err != nil {
-			log.Fatal(err)
-		}
-
-		if file.Name() == ".git" || file.Name() == ".gitignore" {
-			continue
-		}
-
-		if file.IsDir() {
-			apply(abs)
-			files(dir+"/"+file.Name(), apply)
-		}
-	}
-
+	return fileUpdateNotification, haltWatch
 }

@@ -5,15 +5,15 @@ import (
 	"log"
 	"os"
 	"path/filepath"
-	"strings"
 	"time"
+
+	"github.com/hashicorp/logutils"
 )
 
 var (
+	debug          = flag.Bool("debug", false, "enabled debug print statements")
 	wait           = flag.Duration("wait", time.Second*2, "# seconds to wait before restarting")
 	ignore         = flag.String("ignore", "", "comma delimited paths to ignore in the file watcher")
-	debug          = flag.Bool("debug", false, "enabled debug print statements")
-	pwd            = flag.String("dir", ".", "working directory ")
 	restartOnExit  = flag.Bool("onexit", true, "If the app sould restart on exit, regardless of exit code")
 	restartOnError = flag.Bool("onerror", true, "If the app should restart if a lint/test/build/non-zero exit code occurs")
 	appArgs        = flag.String("args", "", "arguments to pass to the underlying app")
@@ -23,53 +23,74 @@ var (
 	ignorePaths = []string{}
 )
 
-func init() {
-	flag.Parse()
+func setupLogging() {
+
+	minLevel := logutils.LogLevel("ERROR")
+
+	if *debug {
+		minLevel = logutils.LogLevel("DEBUG")
+	}
+
+	filter := &logutils.LevelFilter{
+		Levels:   []logutils.LogLevel{"DEBUG", "ERROR"},
+		MinLevel: minLevel,
+		Writer:   os.Stderr,
+	}
+
+	log.SetOutput(filter)
 }
 
 func main() {
-	ignorePaths = strings.Split(*ignore, ",")
+	flag.Parse()
 
-	if *debug {
-		log.Println("Debug mode enabled.")
-		if !*restartOnError {
-			log.Println("\tRestart on error disabled")
-		}
-		for _, files := range ignorePaths {
-			log.Println("\tignoring", files)
-		}
-	}
+	setupLogging()
 
-	*pwd, _ = filepath.Abs(*pwd)
-	fileUpdates, killWatcher := getWatch(*pwd)
+	projectPath := getAbsPathToProject()
 
-	done := false
-	appStopped, killApp := make(<-chan StepResult), make(chan<- os.Signal)
+	log.Println("[DEBUG] watching", projectPath)
 
-	defer func() {
-		killWatcher <- true
-		if killApp != nil {
-			killApp <- os.Kill
-		}
-		done = true
-	}()
-
-	go func() {
-		for !done {
-			select {
-			case <-fileUpdates:
-				if killApp != nil {
-					killApp <- os.Kill
-				}
-			}
-		}
-
-	}()
+	watchNotification, _ := startWatch(projectPath)
 
 	for {
-		appStopped, killApp = runProject(*pwd, *appArgs)
-		exitError := <-appStopped
-		log.Println(exitError)
+		buildResult, killProcess := executeBuildSteps(projectPath, *appArgs)
+		exit := false
+		syncer := make(chan bool)
+
+		go func() {
+			for !exit {
+				close(syncer)
+				select {
+				case <-watchNotification:
+					select {
+					case killProcess <- os.Kill:
+					}
+					return
+				}
+			}
+		}()
+		<-syncer
+
+		if err := <-buildResult; err != nil {
+			log.Println("[DEBUG] build result", err)
+		}
+		exit = true
 		time.Sleep(*wait)
 	}
+
+}
+
+func getAbsPathToProject() string {
+	pwd := "."
+
+	if flag.Arg(0) != "" {
+		pwd = flag.Arg(0)
+	}
+
+	directoryPath, err := filepath.Abs(pwd)
+
+	if err != nil {
+		log.Fatal("[ERROR]", err)
+	}
+
+	return directoryPath
 }

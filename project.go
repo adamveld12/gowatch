@@ -6,69 +6,99 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"strings"
 )
 
+// StepResult the result of a build step
 type StepResult error
 
 var (
-	BuildFailed = errors.New("Build failed")
-	RunFailed   = errors.New("App exited with non-zero exit code")
-	TestFailed  = errors.New("Test failed")
-	LintFailed  = errors.New("Lint failed")
+	// ErrorBuildFailed indicates build failure
+	ErrorBuildFailed = errors.New("Build failed")
+
+	// ErrorRunFailed indicates app exited with error
+	ErrorRunFailed = errors.New("App exited with non-zero exit code")
+
+	// ErrorTestFailed indicates one or more tests failed
+	ErrorTestFailed = errors.New("Test failed")
+
+	// ErrorLintFailed indicates Linter errors
+	ErrorLintFailed = errors.New("Lint failed")
+
+	errorProcessAlreadyFinished = errors.New("process already finished")
 )
 
 func build(projectDirectory string) bool {
-	goPath := os.Getenv("GOPATH")
-	cmd := gocmd("build", strings.TrimPrefix(projectDirectory, filepath.Join(goPath, "src/")+"/"), projectDirectory)
-	err := cmd.Run()
-	return err == nil
+	cmd := exec.Command("go", "build")
+	cmd.Dir = projectDirectory
+	cmd.Env = os.Environ()
+
+	cmd.Stdin = os.Stdin
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+
+	log.Println("[DEBUG] building code...")
+	if err := cmd.Run(); err != nil {
+		log.Println("[ERROR]", err)
+		return false
+	}
+
+	return true
 }
 
 func test(projectDirectory string) bool {
+	log.Println("[DEBUG] testing code...")
+
+	cmd := exec.Command("go", "test")
+	cmd.Dir = projectDirectory
+	cmd.Env = os.Environ()
+
+	cmd.Stdin = os.Stdin
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	if err := cmd.Run(); err != nil {
+		log.Println("[DEBUG] test failures:", err)
+		return false
+	}
+
 	return true
 }
 
 func lint(projectDirectory string) bool {
+	log.Println("[DEBUG] linting code...")
 	return true
+}
+
+func executeBuildSteps(projectDirectory, appArguments string) (<-chan StepResult, chan<- os.Signal) {
+
+	isDone, killApp := make(chan StepResult), make(chan os.Signal)
+
+	if !build(projectDirectory) {
+		isDone <- ErrorBuildFailed
+	} else if *shouldLint && !lint(projectDirectory) {
+		isDone <- ErrorLintFailed
+	} else if *shouldTest && !test(projectDirectory) {
+		isDone <- ErrorTestFailed
+	} else {
+		return runProject(projectDirectory, appArguments)
+	}
+	log.Println("[DEBUG] build steps completed")
+
+	close(isDone)
+	return isDone, killApp
 }
 
 func runProject(projectDirectory string, arguments string) (<-chan StepResult, chan<- os.Signal) {
 	routineSync, isDone, killApp := make(chan bool), make(chan StepResult), make(chan os.Signal)
-
-	// build
-	if !build(projectDirectory) {
-		isDone <- BuildFailed
-		close(isDone)
-		return isDone, killApp
-	}
-
-	// lint
-	if *shouldLint && !lint(projectDirectory) {
-		isDone <- LintFailed
-		close(isDone)
-		return isDone, killApp
-	}
-
-	// test
-	if *shouldTest && !test(projectDirectory) {
-		isDone <- TestFailed
-		close(isDone)
-		return isDone, killApp
-	}
-
 	cmd := run(projectDirectory, arguments)
 	exited := false
 
 	go func() {
 		for {
 			select {
-			case exitSignal := <-killApp:
-				if exitSignal != nil {
-					cmd.Process.Signal(exitSignal)
-				}
-				if *debug {
-					log.Println("\tSending kill signal...")
+			case <-killApp:
+				log.Println("[DEBUG] killing app")
+				if err := cmd.Process.Kill(); err != nil && err.Error() != errorProcessAlreadyFinished.Error() {
+					log.Fatal("[DEBUG] wow this sucks", err)
 				}
 				return
 			default:
@@ -83,13 +113,11 @@ func runProject(projectDirectory string, arguments string) (<-chan StepResult, c
 	go func() {
 		close(routineSync)
 		err := cmd.Run()
-
-		if *debug {
-			log.Println("App has exited", err)
-		}
+		log.Println("[DEBUG] app has exited", err)
 
 		exited = true
 		isDone <- err
+
 		close(isDone)
 	}()
 
@@ -101,19 +129,6 @@ func runProject(projectDirectory string, arguments string) (<-chan StepResult, c
 func run(projectDirectory, arguments string) *exec.Cmd {
 	_, command := filepath.Split(projectDirectory)
 	cmd := exec.Command("./"+command, arguments)
-	cmd.Dir = projectDirectory
-	cmd.Env = os.Environ()
-
-	cmd.Stdin = os.Stdin
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-
-	return cmd
-}
-
-func gocmd(command, arg, projectDirectory string) *exec.Cmd {
-
-	cmd := exec.Command("go", command, arg)
 	cmd.Dir = projectDirectory
 	cmd.Env = os.Environ()
 
