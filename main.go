@@ -14,10 +14,10 @@ var (
 	debug          = flag.Bool("debug", false, "enabled debug print statements")
 	wait           = flag.Duration("wait", time.Second*2, "# seconds to wait before restarting")
 	ignore         = flag.String("ignore", "", "comma delimited paths to ignore in the file watcher")
-	restartOnExit  = flag.Bool("onexit", false, "If the app sould restart on exit, regardless of exit code")
+	restartOnExit  = flag.Bool("onexit", true, "If the app sould restart on exit, regardless of exit code")
 	restartOnError = flag.Bool("onerror", true, "If the app should restart if a lint/test/build/non-zero exit code occurs")
 	appArgs        = flag.String("args", "", "arguments to pass to the underlying app")
-	shouldTest     = flag.Bool("test", false, "run go test on reload")
+	shouldTest     = flag.Bool("test", true, "run go test on reload")
 	shouldLint     = flag.Bool("lint", true, "run go lint on reload")
 
 	ignorePaths = []string{}
