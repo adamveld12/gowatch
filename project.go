@@ -2,11 +2,13 @@ package main
 
 import (
 	"errors"
+	"fmt"
 	"io/ioutil"
 	"log"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 
 	linter "github.com/golang/lint"
 )
@@ -70,35 +72,57 @@ func lint(projectDirectory string) bool {
 	log.Println("[DEBUG] linting code...")
 	lint := &linter.Linter{}
 
-	files := make(map[string][]byte)
+	files := make(map[string]map[string][]byte)
 	filepath.Walk(projectDirectory, func(p string, info os.FileInfo, err error) error {
 		if filepath.Ext(p) == ".go" {
+			fileWithPackage := strings.TrimPrefix(p, projectDirectory)
+			packageName := strings.Trim(strings.TrimSuffix(fileWithPackage, info.Name()), "/")
+
+			if packageName == "" {
+				packageName = "main"
+			}
+
+			files[packageName] = make(map[string][]byte)
 
 			f, err := os.Open(p)
 			if err != nil {
 				return err
 			}
 
-			if files[p], err = ioutil.ReadAll(f); err != nil {
+			if files[packageName][p], err = ioutil.ReadAll(f); err != nil {
 				return err
 			}
 		}
 		return nil
 	})
 
-	problems, err := lint.LintFiles(files)
-	if err != nil {
-		log.Println("[ERROR]", err)
-		return false
-	} else if len(problems) > 0 {
-		log.Println("[DEBUG] Lint issues found")
-		for _, p := range problems {
-			log.Println("[ERROR]", p.String())
+	lintErrors := false
+	for k, v := range files {
+		log.Println("[DEBUG] linting package", k)
+
+		problems, err := lint.LintFiles(v)
+
+		if err != nil {
+			log.Println("[ERROR]", err)
+			lintErrors = true
+		} else if len(problems) > 0 {
+
+			log.Println("[DEBUG] lint issues found")
+			fmt.Printf("%d lint issue(s) found in %s\n\n", len(problems), k)
+			linterConfidenceThresholdReached := false
+			for i, p := range problems {
+				position := p.Position
+				fileWithPackage := strings.Trim(strings.TrimPrefix(position.Filename, projectDirectory), "/")
+				fmt.Printf("%d. %s line %d \n\t%s\n\n", i+1, fileWithPackage, position.Line, p.String())
+				if p.Confidence > 0.5 {
+					linterConfidenceThresholdReached = true
+				}
+			}
+			lintErrors = linterConfidenceThresholdReached
 		}
-		return false
 	}
 
-	return true
+	return !lintErrors
 }
 
 func executeBuildSteps(projectDirectory, appArguments string) (<-chan StepResult, chan<- os.Signal) {
