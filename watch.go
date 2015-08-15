@@ -4,12 +4,27 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"gopkg.in/fsnotify.v1"
 )
 
 func shouldIgnore(file string) bool {
+	for _, pattern := range ignorePaths {
+
+		matched, err := filepath.Match(strings.Replace(pattern, "/", "", -1), strings.Replace(file, "/", "", -1))
+
+		if err != nil {
+			log.Println("[ERROR]", err)
+		}
+
+		if matched && err == nil {
+			log.Printf("[DEBUG] \tIgnore %s -> %s\n", pattern, file)
+			return true
+		}
+	}
+
 	return false
 }
 
@@ -26,7 +41,7 @@ func startWatch(dir string) (<-chan string, chan<- bool) {
 
 	filepath.Walk(dir, func(p string, info os.FileInfo, err error) error {
 		if info.IsDir() {
-			if shouldIgnore(info.Name()) {
+			if shouldIgnore(filepath.Join(p, info.Name())) {
 				return filepath.SkipDir
 			} else if err := watcher.Add(p); err != nil {
 				log.Println("[DEBUG] error adding watched dir", p, info.Name(), err)

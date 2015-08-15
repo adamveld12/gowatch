@@ -5,6 +5,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/hashicorp/logutils"
@@ -13,7 +14,7 @@ import (
 var (
 	debug          = flag.Bool("debug", false, "enabled debug print statements")
 	wait           = flag.Duration("wait", time.Second*2, "# seconds to wait before restarting")
-	ignore         = flag.String("ignore", "", "comma delimited paths to ignore in the file watcher")
+	ignore         = flag.String("ignore", ".git/*,node_modules/*", "comma delimited paths to ignore in the file watcher")
 	restartOnExit  = flag.Bool("onexit", true, "If the app sould restart on exit, regardless of exit code")
 	restartOnError = flag.Bool("onerror", true, "If the app should restart if a lint/test/build/non-zero exit code occurs")
 	appArgs        = flag.String("args", "", "arguments to pass to the underlying app")
@@ -23,29 +24,13 @@ var (
 	ignorePaths = []string{}
 )
 
-func setupLogging() {
-
-	minLevel := logutils.LogLevel("ERROR")
-
-	if *debug {
-		minLevel = logutils.LogLevel("DEBUG")
-	}
-
-	filter := &logutils.LevelFilter{
-		Levels:   []logutils.LogLevel{"DEBUG", "ERROR"},
-		MinLevel: minLevel,
-		Writer:   os.Stderr,
-	}
-
-	log.SetOutput(filter)
-}
-
 func main() {
 	flag.Parse()
 
 	setupLogging()
 
 	projectPath := getAbsPathToProject()
+	ignorePaths = setupIgnorePaths(projectPath)
 
 	log.Println("[DEBUG] watching", projectPath)
 
@@ -54,8 +39,7 @@ func main() {
 	for {
 		time.Sleep(*wait)
 		buildResult, killProcess := executeBuildSteps(projectPath, *appArgs)
-		exit := false
-		syncer := make(chan bool)
+		exit, syncer := false, make(chan bool)
 
 		go func() {
 			close(syncer)
@@ -75,6 +59,7 @@ func main() {
 		<-syncer
 		err := <-buildResult
 		exit = true
+
 		if err != nil && *restartOnError && *restartOnExit {
 			log.Println("[DEBUG] build result", err)
 		} else if !*restartOnError || !*restartOnExit {
@@ -99,4 +84,35 @@ func getAbsPathToProject() string {
 	}
 
 	return directoryPath
+}
+
+func setupLogging() {
+
+	minLevel := logutils.LogLevel("ERROR")
+
+	if *debug {
+		minLevel = logutils.LogLevel("DEBUG")
+	}
+
+	filter := &logutils.LevelFilter{
+		Levels:   []logutils.LogLevel{"DEBUG", "ERROR"},
+		MinLevel: minLevel,
+		Writer:   os.Stderr,
+	}
+
+	log.SetOutput(filter)
+}
+
+func setupIgnorePaths(root string) []string {
+	log.Println("[DEBUG] Ignore globs.")
+	paths := strings.Split(*ignore, ",")
+
+	expandedPaths := []string{}
+	for _, path := range paths {
+		abs := filepath.Join(root, path)
+		log.Printf("[DEBUG] \t%s\n", abs)
+		expandedPaths = append(expandedPaths, abs)
+	}
+
+	return expandedPaths
 }
