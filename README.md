@@ -44,7 +44,7 @@ The linter will not stop the app from running if the lint error has a low confid
 
 Process signals (Interrupt, Kill) are not passed to the child process, I ran into a lot of issues with this but I might figure it out in the near future.
 
-I have not had the chance to test this with multi level packages (e.g. database/sql/driver or net/http) at the moment so but you'll be the first to know when I get it working.
+I have not had the chance to test this with multi level packages (e.g. database/sql/driver or net/http) at the moment.
 
 ## License:
 
