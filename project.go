@@ -10,6 +10,8 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/fatih/color"
+
 	linter "github.com/golang/lint"
 )
 
@@ -60,6 +62,7 @@ func test(projectDirectory string) bool {
 	cmd.Stdin = os.Stdin
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
+
 	if err := cmd.Run(); err != nil {
 		log.Println("[DEBUG] test failures:", err)
 		return false
@@ -103,19 +106,26 @@ func lint(projectDirectory string) bool {
 		problems, err := lint.LintFiles(v)
 
 		if err != nil {
-			log.Println("[ERROR]", err)
+			color.Red("[ERROR]", err)
 			lintErrors = true
 		} else if len(problems) > 0 {
 
 			log.Println("[DEBUG] lint issues found")
-			fmt.Printf("%d lint issue(s) found in %s\n\n", len(problems), k)
+			color.Yellow("%d lint issue(s) found in %s\n\n", len(problems), k)
 			linterConfidenceThresholdReached := false
 			for i, p := range problems {
 				position := p.Position
 				fileWithPackage := strings.Trim(strings.TrimPrefix(position.Filename, projectDirectory), "/")
-				fmt.Printf("%d. %s line %d \n\t%s\n\n", i+1, fileWithPackage, position.Line, p.String())
+				lintInfo := strings.Split(p.String(), "\n")
+
+				lintLineOutput := fmt.Sprintf("\t%d. %s line %d - %s\n\t%s\n\n",
+					i+1, fileWithPackage, position.Line, lintInfo[2], lintInfo[0])
+
 				if p.Confidence > 0.5 {
+					color.Red(lintLineOutput)
 					linterConfidenceThresholdReached = true
+				} else {
+					color.Yellow(lintLineOutput)
 				}
 			}
 			lintErrors = linterConfidenceThresholdReached
@@ -132,10 +142,13 @@ func executeBuildSteps(projectDirectory, appArguments string) (<-chan StepResult
 	if !build(projectDirectory) {
 		isDone <- ErrorBuildFailed
 	} else if *shouldLint && !lint(projectDirectory) {
+		color.Red("Linter found errors.")
 		isDone <- ErrorLintFailed
 	} else if *shouldTest && !test(projectDirectory) {
+		color.Red("Tests failed.")
 		isDone <- ErrorTestFailed
 	} else {
+		color.Green("Starting...")
 		return runProject(projectDirectory, appArguments)
 	}
 	log.Println("[DEBUG] build steps completed")
@@ -171,6 +184,12 @@ func runProject(projectDirectory string, arguments string) (<-chan StepResult, c
 		close(routineSync)
 		err := cmd.Run()
 		log.Println("[DEBUG] app has exited", err)
+
+		if err != nil {
+			color.Red("exited with", err)
+		} else {
+			color.Green("exited successfully (0)")
+		}
 
 		exited = true
 		isDone <- err
