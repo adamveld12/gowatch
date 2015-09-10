@@ -31,6 +31,9 @@ var (
 	// ErrorLintFailed indicates Linter errors
 	ErrorLintFailed = errors.New("Lint failed")
 
+	// ErrorAppKilled indicates the file watcher killed the process
+	ErrorAppKilled = errors.New("File watcher killed")
+
 	errorProcessAlreadyFinished = errors.New("process already finished")
 )
 
@@ -163,38 +166,28 @@ func runProject(projectDirectory string, arguments string) (<-chan StepResult, c
 	exited := false
 
 	go func() {
-		for {
-			select {
-			case <-killApp:
-				log.Println("[DEBUG] killing app")
-				if err := cmd.Process.Kill(); err != nil && err.Error() != errorProcessAlreadyFinished.Error() {
-					log.Fatal("[DEBUG] wow this sucks", err)
-				}
-				return
-			default:
-				if exited {
-					return
-				}
+		signal := <-killApp
+		if !exited {
+			log.Println("[DEBUG] killing app")
+			if err := cmd.Process.Signal(signal); err != nil && err.Error() != errorProcessAlreadyFinished.Error() {
+				log.Fatal("[DEBUG] wow this sucks", err)
 			}
+			exited = true
 		}
-
 	}()
 
 	go func() {
 		close(routineSync)
 		err := cmd.Run()
-		log.Println("[DEBUG] app has exited", err)
-
-		if err != nil {
-			color.Red("exited with", err)
+		if exited {
+			isDone <- ErrorAppKilled
 		} else {
-			color.Green("exited successfully (0)")
+			exited = true
+			isDone <- err
 		}
 
-		exited = true
-		isDone <- err
-
 		close(isDone)
+		close(killApp)
 	}()
 
 	<-routineSync

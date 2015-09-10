@@ -51,44 +51,40 @@ func main() {
 
 	log.Println("[DEBUG] watching", projectPath)
 
+	handleWatch(projectPath)
+}
+
+func handleWatch(projectPath string) {
 	watchNotification, _ := startWatch(projectPath)
 
 	for {
 		time.Sleep(*wait)
 		buildResult, killProcess := executeBuildSteps(projectPath, *appArgs)
-		exit, syncer := false, make(chan bool)
+		syncer := make(chan bool)
 
 		go func() {
-			close(syncer)
-			for !exit {
-				select {
-				default:
-				case <-watchNotification:
-					select {
-					case killProcess <- os.Kill:
-					}
-					return
-				}
+			err := <-buildResult
+
+			if err != nil {
+				color.Red("exited with %s", err.Error())
+			} else {
+				color.Green("exited successfully")
+			}
+
+			if err != nil && *restartOnError && *restartOnExit {
+				log.Println("[DEBUG] build result", err)
+			} else if !*restartOnError || !*restartOnExit && err != ErrorAppKilled {
+				log.Println("[DEBUG] waiting on file notification")
+				<-watchNotification
 			}
 			log.Println("[DEBUG] exiting routine")
+			close(syncer)
 		}()
 
+		<-watchNotification
+		killProcess <- os.Kill
 		<-syncer
-		err := <-buildResult
-		exit = true
-
-		if err != nil {
-			color.Red(err.Error())
-		}
-
-		if err != nil && *restartOnError && *restartOnExit {
-			log.Println("[DEBUG] build result", err)
-		} else if !*restartOnError || !*restartOnExit {
-			log.Println("[DEBUG] waiting on file notification")
-			<-watchNotification
-		}
 	}
-
 }
 
 func getAbsPathToProject() string {
