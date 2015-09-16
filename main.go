@@ -9,6 +9,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/adamveld12/gowatch/project"
+	"github.com/adamveld12/gowatch/watch"
 	"github.com/fatih/color"
 	"github.com/hashicorp/logutils"
 )
@@ -22,8 +24,6 @@ var (
 	appArgs        = flag.String("args", "", "")
 	shouldTest     = flag.Bool("test", true, "")
 	shouldLint     = flag.Bool("lint", true, "")
-
-	ignorePaths = []string{}
 )
 
 func init() {
@@ -47,43 +47,52 @@ func main() {
 	setupLogging()
 
 	projectPath := getAbsPathToProject()
-	ignorePaths = setupIgnorePaths(projectPath)
 
 	log.Println("[DEBUG] watching", projectPath)
 
-	handleWatch(projectPath)
+	handleWatch(projectPath, setupIgnorePaths(projectPath))
 }
 
-func handleWatch(projectPath string) {
-	watchNotification, _ := startWatch(projectPath)
+func handleWatch(projectPath string, ignorePaths []string) {
+	watchHandle := watch.StartWatch(projectPath, ignorePaths)
 
 	for {
 		time.Sleep(*wait)
-		buildResult, killProcess := executeBuildSteps(projectPath, *appArgs)
-		syncer := make(chan bool)
+		execHandle := project.ExecuteBuildSteps(projectPath, *appArgs, *shouldTest, *shouldLint)
 
 		go func() {
-			err := <-buildResult
-
-			if err != nil {
-				color.Red("exited with %s", err.Error())
-			} else {
-				color.Green("exited successfully")
+			for execHandle.Running() {
+				select {
+				case <-watchHandle.FileNotifier():
+					log.Println(color.MagentaString("[ERROR] attempting to kill process"))
+					execHandle.Kill(nil)
+					log.Println("[DEBUG] exiting file watch routine in main")
+					return
+				default:
+					if execHandle.Halted() {
+						return
+					}
+				}
 			}
-
-			if err != nil && *restartOnError && *restartOnExit {
-				log.Println("[DEBUG] build result", err)
-			} else if !*restartOnError || !*restartOnExit && err != ErrorAppKilled {
-				log.Println("[DEBUG] waiting on file notification")
-				<-watchNotification
-			}
-			log.Println("[DEBUG] exiting routine")
-			close(syncer)
 		}()
 
-		<-watchNotification
-		killProcess <- os.Kill
-		<-syncer
+		log.Println(color.MagentaString("[DEBUG] Starting forealsies"))
+		err := execHandle.Error()
+
+		exitedSuccessfully := err == nil || err == project.ErrorAppKilled
+
+		if exitedSuccessfully {
+			color.Green("exited successfully\n")
+		} else {
+			color.Red("%s\n", err.Error())
+		}
+
+		if (!exitedSuccessfully && !*restartOnError) || (!*restartOnExit && err != project.ErrorAppKilled) {
+			log.Println("[DEBUG] waiting on file notification ", err.Error())
+			<-watchHandle.FileNotifier()
+		}
+
+		log.Println("[DEBUG] exiting routine")
 	}
 }
 
@@ -104,7 +113,6 @@ func getAbsPathToProject() string {
 }
 
 func setupLogging() {
-
 	minLevel := logutils.LogLevel("ERROR")
 
 	if *debug {
