@@ -1,9 +1,9 @@
 package project
 
 import (
-	"log"
 	"sync"
 
+	gwl "github.com/adamveld12/gowatch/log"
 	"github.com/fatih/color"
 )
 
@@ -31,7 +31,7 @@ func ExecuteBuildSteps(projectDirectory, appArguments string, shouldTest bool, s
 		handle.start(run(projectDirectory, appArguments))
 	}
 
-	log.Println("[DEBUG] build steps completed")
+	gwl.LogDebug("[DEBUG] build steps completed")
 
 	return handle
 }

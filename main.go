@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	gwl "github.com/adamveld12/gowatch/log"
 	"github.com/adamveld12/gowatch/project"
 	"github.com/adamveld12/gowatch/watch"
 	"github.com/fatih/color"
@@ -48,7 +49,7 @@ func main() {
 
 	projectPath := getAbsPathToProject()
 
-	log.Println("[DEBUG] watching", projectPath)
+	gwl.LogDebug("watching", projectPath)
 
 	handleWatch(projectPath, setupIgnorePaths(projectPath))
 }
@@ -64,9 +65,9 @@ func handleWatch(projectPath string, ignorePaths []string) {
 			for execHandle.Running() {
 				select {
 				case <-watchHandle.FileNotifier():
-					log.Println(color.MagentaString("[ERROR] attempting to kill process"))
+					gwl.LogError("attempting to kill process")
 					execHandle.Kill(nil)
-					log.Println("[DEBUG] exiting file watch routine in main")
+					gwl.LogDebug("exiting file watch routine in main")
 					return
 				default:
 					if execHandle.Halted() {
@@ -76,7 +77,6 @@ func handleWatch(projectPath string, ignorePaths []string) {
 			}
 		}()
 
-		log.Println(color.MagentaString("[DEBUG] Starting forealsies"))
 		err := execHandle.Error()
 
 		exitedSuccessfully := err == nil || err == project.ErrorAppKilled
@@ -88,11 +88,9 @@ func handleWatch(projectPath string, ignorePaths []string) {
 		}
 
 		if (!exitedSuccessfully && !*restartOnError) || (!*restartOnExit && err != project.ErrorAppKilled) {
-			log.Println("[DEBUG] waiting on file notification ", err.Error())
+			gwl.LogDebug("waiting on file notification")
 			<-watchHandle.FileNotifier()
 		}
-
-		log.Println("[DEBUG] exiting routine")
 	}
 }
 
@@ -120,7 +118,7 @@ func setupLogging() {
 	}
 
 	filter := &logutils.LevelFilter{
-		Levels:   []logutils.LogLevel{"DEBUG", "ERROR"},
+		Levels:   []logutils.LogLevel{"DEBUG", "INFO", "ERROR"},
 		MinLevel: minLevel,
 		Writer:   os.Stderr,
 	}
@@ -129,13 +127,13 @@ func setupLogging() {
 }
 
 func setupIgnorePaths(root string) []string {
-	log.Println("[DEBUG] Ignore globs.")
+	gwl.LogDebug("Ignore globs.")
 	paths := strings.Split(*ignore, ",")
 
 	expandedPaths := []string{}
 	for _, path := range paths {
 		abs := filepath.Join(root, path)
-		log.Printf("[DEBUG] \t%s\n", abs)
+		gwl.LogDebug("\t%s\n", abs)
 		expandedPaths = append(expandedPaths, abs)
 	}
 

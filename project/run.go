@@ -1,11 +1,12 @@
 package project
 
 import (
-	"log"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"sync"
+
+	gwl "github.com/adamveld12/gowatch/log"
 )
 
 type ExecuteHandle struct {
@@ -39,11 +40,11 @@ func (h *ExecuteHandle) Kill(reason StepResult) {
 		cmd := h.cmd
 		proc := cmd.Process
 
-		log.Println("[DEBUG] Killing")
+		gwl.LogDebug("Killing")
 
 		if proc != nil {
 			if err := proc.Kill(); err != nil && err.Error() != errorProcessAlreadyFinished.Error() {
-				log.Println("[DEBUG] process didn't seem to exit gracefully", err)
+				gwl.LogDebug("process didn't seem to exit gracefully", err)
 				h.writeError(err)
 			} else {
 				h.writeError(reason)
@@ -56,7 +57,7 @@ func (h *ExecuteHandle) Kill(reason StepResult) {
 		h.halted = true
 		close(h.result)
 	} else {
-		log.Println("[DEBUG] process never started", reason.Error())
+		gwl.LogDebug("process never started", reason.Error())
 		h.writeError(reason)
 	}
 
@@ -65,7 +66,7 @@ func (h *ExecuteHandle) Kill(reason StepResult) {
 
 func (h *ExecuteHandle) writeError(reason StepResult) {
 	if h.running {
-		log.Println("[DEBUG] sending error")
+		gwl.LogDebug("sending error")
 		h.result <- reason
 	}
 }
@@ -91,7 +92,7 @@ func (h *ExecuteHandle) start(cmd *exec.Cmd) {
 	go func() {
 		close(waiter)
 		if err := cmd.Wait(); err != nil {
-			log.Println("[DEBUG] app exited prematurely")
+			gwl.LogDebug("app exited prematurely")
 			h.Kill(err)
 		}
 	}()

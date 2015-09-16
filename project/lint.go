@@ -3,18 +3,18 @@ package project
 import (
 	"fmt"
 	"io/ioutil"
-	"log"
 	"os"
 	"path/filepath"
 	"strings"
 
 	"github.com/fatih/color"
 
+	gwl "github.com/adamveld12/gowatch/log"
 	linter "github.com/golang/lint"
 )
 
 func lint(projectDirectory string) bool {
-	log.Println("[DEBUG] linting code...")
+	gwl.LogDebug("linting code...")
 	lint := &linter.Linter{}
 
 	files := make(map[string]map[string][]byte)
@@ -43,7 +43,7 @@ func lint(projectDirectory string) bool {
 
 	lintErrors := false
 	for k, v := range files {
-		log.Println("[DEBUG] linting package", k)
+		gwl.LogDebug("linting package %s", k)
 
 		problems, err := lint.LintFiles(v)
 
@@ -52,7 +52,7 @@ func lint(projectDirectory string) bool {
 			lintErrors = true
 		} else if len(problems) > 0 {
 
-			log.Println("[DEBUG] lint issues found")
+			gwl.LogDebug("lint issues found")
 			color.Yellow("%d lint issue(s) found in %s\n\n", len(problems), k)
 			linterConfidenceThresholdReached := false
 			for i, p := range problems {
