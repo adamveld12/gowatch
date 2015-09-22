@@ -58,26 +58,23 @@ func handleWatch(projectPath string, ignorePaths []string) {
 	watchHandle := watch.StartWatch(projectPath, ignorePaths)
 
 	for {
+		gwl.LogDebug("---Starting app monitor---")
 		time.Sleep(*wait)
 		execHandle := project.ExecuteBuildSteps(projectPath, *appArgs, *shouldTest, *shouldLint)
 
-		go func() {
-			for execHandle.Running() {
-				select {
-				case <-watchHandle.FileNotifier():
-					gwl.LogError("attempting to kill process")
-					execHandle.Kill(nil)
-					gwl.LogDebug("exiting file watch routine in main")
-					return
-				default:
-					if execHandle.Halted() {
-						return
-					}
-				}
+		gwl.LogDebug("---Setting up watch cb---")
+		watchHandle.Subscribe(func(fileName string) {
+			if !execHandle.Halted() {
+				gwl.LogError("attempting to kill process")
+				execHandle.Kill(nil)
+				gwl.LogDebug("exiting file watch routine in main")
 			}
-		}()
+		})
 
+		gwl.LogDebug("waiting on app to exit")
 		err := execHandle.Error()
+		gwl.LogDebug("---App exited---")
+		watchHandle.Subscribe(nil)
 
 		exitedSuccessfully := err == nil || err == project.ErrorAppKilled
 
@@ -87,9 +84,14 @@ func handleWatch(projectPath string, ignorePaths []string) {
 			color.Red("%s\n", err.Error())
 		}
 
+		sync := make(chan bool)
 		if (!exitedSuccessfully && !*restartOnError) || (!*restartOnExit && err != project.ErrorAppKilled) {
+			watchHandle.Subscribe(func(fileName string) {
+				close(sync)
+				watchHandle.Subscribe(nil)
+			})
 			gwl.LogDebug("waiting on file notification")
-			<-watchHandle.FileNotifier()
+			<-sync
 		}
 	}
 }

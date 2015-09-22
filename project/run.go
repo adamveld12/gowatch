@@ -16,6 +16,7 @@ type ExecuteHandle struct {
 	halted           bool
 	cmd              *exec.Cmd
 	running          bool
+	errorCode        error
 }
 
 func (h *ExecuteHandle) Running() bool {
@@ -25,7 +26,11 @@ func (h *ExecuteHandle) Running() bool {
 }
 
 func (h *ExecuteHandle) Error() StepResult {
-	return <-h.result
+	if h.running {
+		return <-h.result
+	} else {
+		return h.errorCode
+	}
 }
 
 // Kill kills the underlying application if its started
@@ -35,7 +40,9 @@ func (h *ExecuteHandle) Kill(reason StepResult) {
 		reason = ErrorAppKilled
 	}
 
+	gwl.LogDebug("hitting kill lock")
 	h.Lock()
+	gwl.LogDebug("done with kill lock")
 	if h.running {
 		cmd := h.cmd
 		proc := cmd.Process
@@ -45,19 +52,17 @@ func (h *ExecuteHandle) Kill(reason StepResult) {
 		if proc != nil {
 			if err := proc.Kill(); err != nil && err.Error() != errorProcessAlreadyFinished.Error() {
 				gwl.LogDebug("process didn't seem to exit gracefully", err)
-				h.writeError(err)
-			} else {
-				h.writeError(reason)
+				reason = err
 			}
-		} else {
-			h.writeError(reason)
 		}
 
+		h.writeError(reason)
+		h.errorCode = reason
 		h.running = false
 		h.halted = true
 		close(h.result)
-	} else {
-		gwl.LogDebug("process never started", reason.Error())
+	} else if h.errorCode == nil {
+		gwl.LogDebug("process never started %s", reason.Error())
 		h.writeError(reason)
 	}
 
@@ -68,6 +73,8 @@ func (h *ExecuteHandle) writeError(reason StepResult) {
 	if h.running {
 		gwl.LogDebug("sending error")
 		h.result <- reason
+	} else {
+		h.errorCode = reason
 	}
 }
 

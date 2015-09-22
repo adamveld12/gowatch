@@ -60,8 +60,16 @@ func lint(projectDirectory string) bool {
 				fileWithPackage := strings.Trim(strings.TrimPrefix(position.Filename, projectDirectory), "/")
 				lintInfo := strings.Split(p.String(), "\n")
 
-				lintLineOutput := fmt.Sprintf("\t%d. %s line %d - %s\n\t%s\n\n",
-					i+1, fileWithPackage, position.Line, lintInfo[2], lintInfo[0])
+				gwl.LogDebug("%d out of 3", len(lintInfo))
+
+				readableLintError := ""
+
+				if len(lintInfo) >= 3 {
+					readableLintError = fmt.Sprintf("- %s", lintInfo[2])
+				}
+
+				lintLineOutput := fmt.Sprintf("\t%d. %s line %d %s\n\t%s\n\n",
+					i+1, fileWithPackage, position.Line, readableLintError, lintInfo[0])
 
 				if p.Confidence > 0.5 {
 					color.Red(lintLineOutput)

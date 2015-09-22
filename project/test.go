@@ -1,13 +1,14 @@
 package project
 
 import (
-	"log"
 	"os"
 	"os/exec"
+
+	gwl "github.com/adamveld12/gowatch/log"
 )
 
 func test(projectDirectory string) bool {
-	log.Println("[DEBUG] testing code...")
+	gwl.LogDebug("testing code...")
 
 	cmd := exec.Command("go", "test")
 	cmd.Dir = projectDirectory
@@ -18,7 +19,7 @@ func test(projectDirectory string) bool {
 	cmd.Stderr = os.Stderr
 
 	if err := cmd.Run(); err != nil {
-		log.Println("[DEBUG] test failures:", err)
+		gwl.LogDebug("test failures: ", err)
 		return false
 	}
 
