@@ -22,6 +22,7 @@ var (
 	ignore         = flag.String("ignore", ".git/*,node_modules/*", "")
 	restartOnExit  = flag.Bool("onexit", true, "")
 	restartOnError = flag.Bool("onerror", true, "")
+	outputName     = flag.String("output", "", "")
 	appArgs        = flag.String("args", "", "")
 	shouldTest     = flag.Bool("test", true, "")
 	shouldLint     = flag.Bool("lint", true, "")
@@ -30,6 +31,7 @@ var (
 func init() {
 	flag.Usage = func() {
 		fmt.Printf("%s options\n%s\n", os.Args[0], strings.Join([]string{
+			color.GreenString("  -output") + "=\"\": the name of the program to output",
 			color.GreenString("  -args") + "=\"\": arguments to pass to the underlying app",
 			color.GreenString("  -debug") + "=false: enabled debug print statements",
 			color.GreenString("  -ignore") + "=\".git/*,node_modules/*\": comma delimited paths to ignore in the file watcher",
@@ -60,7 +62,7 @@ func handleWatch(projectPath string, ignorePaths []string) {
 	for {
 		gwl.LogDebug("---Starting app monitor---")
 		time.Sleep(*wait)
-		execHandle := project.ExecuteBuildSteps(projectPath, *appArgs, *shouldTest, *shouldLint)
+		execHandle := project.ExecuteBuildSteps(projectPath, *outputName, *appArgs, *shouldTest, *shouldLint)
 
 		gwl.LogDebug("---Setting up watch cb---")
 		watchHandle.Subscribe(func(fileName string) {

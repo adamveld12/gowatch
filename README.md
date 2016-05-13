@@ -12,12 +12,14 @@ The file watching is done using [fsnotify](https://github.com/go-fsnotify/fsnoti
 Simply go to your desired directory (for example, $GOPATH/src/myBadassGoProject) and run the following:
 
 ```sh
-  gowatch [options] 
+  gowatch [options]
 ```
 
 ### Options:
 
 Note: the option that is set on each argument below is the current default if not passed.
+
+`-output=""`the name of the program to output
 
 `-args=""`CLI arguments passed to the app
 

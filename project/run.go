@@ -106,9 +106,17 @@ func (h *ExecuteHandle) start(cmd *exec.Cmd) {
 	<-waiter
 }
 
-func run(projectDirectory, arguments string) *exec.Cmd {
-	_, command := filepath.Split(projectDirectory)
+func run(projectDirectory, programName string, arguments string) *exec.Cmd {
+	command := ""
+
+	if programName != "" {
+		command = programName
+	} else {
+		_, command = filepath.Split(projectDirectory)
+	}
+
 	cmd := exec.Command("./"+command, arguments)
+
 	cmd.Dir = projectDirectory
 	cmd.Env = os.Environ()
 
