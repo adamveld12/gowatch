@@ -6,7 +6,7 @@ import (
 	gwl "github.com/adamveld12/gowatch/log"
 )
 
-func ExecuteBuildSteps(projectDirectory, appArguments string, shouldTest bool, shouldLint bool) *ExecuteHandle {
+func ExecuteBuildSteps(projectDirectory, outputName string, appArguments string, shouldTest bool, shouldLint bool) *ExecuteHandle {
 
 	handle := &ExecuteHandle{
 		sync.Mutex{},
@@ -18,14 +18,14 @@ func ExecuteBuildSteps(projectDirectory, appArguments string, shouldTest bool, s
 		nil,
 	}
 
-	if !build(projectDirectory) {
+	if !build(projectDirectory, outputName) {
 		handle.Kill(ErrorBuildFailed)
 	} else if shouldLint && !lint(projectDirectory) {
 		handle.Kill(ErrorLintFailed)
 	} else if shouldTest && !test(projectDirectory) {
 		handle.Kill(ErrorTestFailed)
 	} else {
-		handle.start(run(projectDirectory, appArguments))
+		handle.start(run(projectDirectory, outputName, appArguments))
 	}
 
 	gwl.LogDebug("[DEBUG] build steps completed")

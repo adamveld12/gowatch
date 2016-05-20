@@ -5,8 +5,8 @@ import (
 	"os/exec"
 )
 
-func build(projectDirectory string) bool {
-	cmd := exec.Command("go", "build")
+func build(projectDirectory string, outputName string) bool {
+	cmd := exec.Command("go", "build", "-o", outputName)
 	cmd.Dir = projectDirectory
 	cmd.Env = os.Environ()
 
