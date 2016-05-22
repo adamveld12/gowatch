@@ -9,6 +9,8 @@ import (
 	gwl "github.com/adamveld12/gowatch/log"
 )
 
+// Fairly sure I don't need the locks anymore since refactoring this a few times
+
 type ExecuteHandle struct {
 	sync.Mutex
 	projectDirectory string
@@ -17,6 +19,12 @@ type ExecuteHandle struct {
 	cmd              *exec.Cmd
 	running          bool
 	errorCode        error
+}
+
+func (h *ExecuteHandle) Halted() bool {
+	h.Lock()
+	defer h.Unlock()
+	return h.halted
 }
 
 func (h *ExecuteHandle) Running() bool {
@@ -78,12 +86,6 @@ func (h *ExecuteHandle) writeError(reason StepResult) {
 	}
 }
 
-func (h *ExecuteHandle) Halted() bool {
-	h.Lock()
-	defer h.Unlock()
-	return h.halted
-}
-
 func (h *ExecuteHandle) start(cmd *exec.Cmd) {
 	h.Lock()
 	h.cmd = cmd
@@ -98,10 +100,13 @@ func (h *ExecuteHandle) start(cmd *exec.Cmd) {
 	waiter := make(chan bool)
 	go func() {
 		close(waiter)
-		if err := cmd.Wait(); err != nil {
+		err := cmd.Wait()
+
+		if err != nil {
 			gwl.LogDebug("app exited prematurely")
-			h.Kill(err)
 		}
+
+		h.Kill(err)
 	}()
 	<-waiter
 }

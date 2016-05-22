@@ -2,3 +2,4 @@ main
 gowatch
 coverage.out
 true
+test/test
