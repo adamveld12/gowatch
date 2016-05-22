@@ -1,6 +1,6 @@
 # :recycle: Gowatch
 
-[![Go Report Card](https://goreportcard.com/badge/adamveld12/gowatch)](https://goreportcard.com/report/adamveld12/gowatch)
+[![Build Status](https://drone.io/github.com/adamveld12/gowatch/status.png)](https://drone.io/github.com/adamveld12/gowatch/latest) [![GoDoc](https://godoc.org/github.com/adamveld12/gowatch?status.svg)](http://godoc.org/github.com/adamvel12/gowatch) [![Go Report Card](https://goreportcard.com/badge/adamveld12/gowatch)](https://goreportcard.com/report/adamveld12/gowatch)
 
 Compile and run your app during development time. Gowatch will automatically build and restart your app on compile and app exit,
 giving you hot reload like behavior during your dev session.
