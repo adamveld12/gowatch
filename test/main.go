@@ -1,3 +1,4 @@
+// test is a simple app that counts the number of seconds its been running.
 package main
 
 import (
@@ -23,9 +24,18 @@ func main() {
 
 	for i := 1; ; i++ {
 		time.Sleep(1 * time.Second)
-
-		fmt.Printf("%vs\n", i)
+		fmt.Print(fmtIteration(i))
 	}
+}
+
+func fmtIteration(i int) string {
+	pluralized := ""
+
+	if i > 1 || i < 1 {
+		pluralized = "s"
+	}
+
+	return fmt.Sprintf("%v second%v and counting!\n", i, pluralized)
 }
 
 func err() {
