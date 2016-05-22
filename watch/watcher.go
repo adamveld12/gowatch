@@ -12,7 +12,7 @@ import (
 	gwl "github.com/adamveld12/gowatch/log"
 )
 
-func StartWatch(dir string, ignorePaths []string) *WatchHandle {
+func StartWatch(dir, outputName string, ignorePaths []string) *WatchHandle {
 	watcher, err := fsnotify.NewWatcher()
 
 	if err != nil {
@@ -33,8 +33,7 @@ func StartWatch(dir string, ignorePaths []string) *WatchHandle {
 		nil,
 	}
 
-	_, projectName := filepath.Split(dir)
-	go handle.handleFileEvent(projectName)
+	go handle.handleFileEvent(outputName)
 
 	return handle
 }

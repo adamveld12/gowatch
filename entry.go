@@ -55,7 +55,7 @@ func startWatch(projectPath, outputName, appArgs string,
 
 	gwl.Setup(debug)
 
-	watchHandle := watch.StartWatch(projectPath, ignorePaths)
+	watchHandle := watch.StartWatch(projectPath, outputName, ignorePaths)
 
 	if outputName == "" {
 		outputName = filepath.Base(projectPath)
