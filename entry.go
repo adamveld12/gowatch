@@ -28,7 +28,7 @@ type Config struct {
 }
 
 // Start starts running GoWatch on a specified package directory
-func Start(config Config) error {
+func Start(config Config) {
 	config.PackagePath = defaultPackagePath(config.PackagePath)
 	config.OutputName = defaultArtifactOutputName(config.PackagePath, config.OutputName)
 	config.Wait = defaultWait(config.Wait)
@@ -43,8 +43,6 @@ func Start(config Config) error {
 		config.Wait,
 		config.IgnorePaths,
 		config.Debug)
-
-	return nil
 }
 
 func startWatch(projectPath, outputName, appArgs string,
@@ -55,15 +53,15 @@ func startWatch(projectPath, outputName, appArgs string,
 
 	gwl.Setup(debug)
 
-	watchHandle := watch.StartWatch(projectPath, ignorePaths)
+	watchHandle := watch.StartWatch(projectPath, outputName, ignorePaths)
 
 	if outputName == "" {
 		outputName = filepath.Base(projectPath)
-		gwl.LogDebug("using", outputName, "as the output name")
+		gwl.Debug("using", outputName, "as the output name")
 	}
 
 	for {
-		gwl.LogDebug("---Starting app monitor---")
+		gwl.Debug("---Starting app monitor---")
 		time.Sleep(wait)
 		execHandle := project.Execute(projectPath,
 			outputName,
@@ -71,18 +69,18 @@ func startWatch(projectPath, outputName, appArgs string,
 			shouldTest,
 			shouldLint)
 
-		gwl.LogDebug("---Setting up watch cb---")
+		gwl.Debug("---Setting up watch cb---")
 		watchHandle.Subscribe(func(fileName string) {
 			if !execHandle.Halted() {
-				gwl.LogError("attempting to kill process")
+				gwl.Error("attempting to kill process")
 				execHandle.Kill(nil)
-				gwl.LogDebug("exiting file watch routine in main")
+				gwl.Debug("exiting file watch routine in main")
 			}
 		})
 
-		gwl.LogDebug("waiting on app to exit")
+		gwl.Debug("waiting on app to exit")
 		err := execHandle.Error()
-		gwl.LogDebug("---App exited---")
+		gwl.Debug("---App exited---")
 		watchHandle.Subscribe(nil)
 
 		exitedSuccessfully := err == nil || err == project.ErrorAppKilled
@@ -99,13 +97,12 @@ func startWatch(projectPath, outputName, appArgs string,
 				close(sync)
 				watchHandle.Subscribe(nil)
 			})
-			gwl.LogDebug("waiting on file notification")
+			gwl.Debug("waiting on file notification")
 			<-sync
 		}
 	}
 }
 
-// TODO needs tests
 func defaultArtifactOutputName(packagePath, outputName string) string {
 	if outputName == "" {
 		return filepath.Base(packagePath)
@@ -114,11 +111,9 @@ func defaultArtifactOutputName(packagePath, outputName string) string {
 	return outputName
 }
 
-// TODO needs tests
 func defaultWait(waitTime time.Duration) time.Duration {
-	waitMillis := time.Duration(waitTime.Nanoseconds()) * time.Millisecond
 
-	if waitMillis < 500 {
+	if waitTime/time.Millisecond < 500 {
 		return time.Millisecond * 500
 	} else if waitTime.Seconds() > 10 {
 		return time.Second * 10
@@ -127,7 +122,6 @@ func defaultWait(waitTime time.Duration) time.Duration {
 	return waitTime
 }
 
-// TODO needs tests
 func defaultPackagePath(packagePath string) string {
 	finalDir := packagePath
 	if packagePath == "" {

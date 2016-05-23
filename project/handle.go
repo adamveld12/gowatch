@@ -1,9 +1,7 @@
 package project
 
 import (
-	"os"
 	"os/exec"
-	"path/filepath"
 	"sync"
 
 	gwl "github.com/adamveld12/gowatch/log"
@@ -48,18 +46,18 @@ func (h *ExecuteHandle) Kill(reason StepResult) {
 		reason = ErrorAppKilled
 	}
 
-	gwl.LogDebug("hitting kill lock")
+	gwl.Debug("hitting kill lock")
 	h.Lock()
-	gwl.LogDebug("done with kill lock")
+	gwl.Debug("done with kill lock")
 	if h.running {
 		cmd := h.cmd
 		proc := cmd.Process
 
-		gwl.LogDebug("Killing")
+		gwl.Debug("Killing")
 
 		if proc != nil {
 			if err := proc.Kill(); err != nil && err.Error() != errorProcessAlreadyFinished.Error() {
-				gwl.LogDebug("process didn't seem to exit gracefully", err)
+				gwl.Debug("process didn't seem to exit gracefully", err)
 				reason = err
 			}
 		}
@@ -70,7 +68,7 @@ func (h *ExecuteHandle) Kill(reason StepResult) {
 		h.halted = true
 		close(h.result)
 	} else if h.errorCode == nil {
-		gwl.LogDebug("process never started %s", reason.Error())
+		gwl.Debug("process never started %s", reason.Error())
 		h.writeError(reason)
 	}
 
@@ -79,7 +77,7 @@ func (h *ExecuteHandle) Kill(reason StepResult) {
 
 func (h *ExecuteHandle) writeError(reason StepResult) {
 	if h.running {
-		gwl.LogDebug("sending error")
+		gwl.Debug("sending error")
 		h.result <- reason
 	} else {
 		h.errorCode = reason
@@ -103,31 +101,10 @@ func (h *ExecuteHandle) start(cmd *exec.Cmd) {
 		err := cmd.Wait()
 
 		if err != nil {
-			gwl.LogDebug("app exited prematurely")
+			gwl.Debug("app exited prematurely")
 		}
 
 		h.Kill(err)
 	}()
 	<-waiter
-}
-
-func run(projectDirectory, programName string, arguments string) *exec.Cmd {
-	command := ""
-
-	if programName != "" {
-		command = programName
-	} else {
-		_, command = filepath.Split(projectDirectory)
-	}
-
-	cmd := exec.Command("./"+command, arguments)
-
-	cmd.Dir = projectDirectory
-	cmd.Env = os.Environ()
-
-	cmd.Stdin = os.Stdin
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-
-	return cmd
 }
