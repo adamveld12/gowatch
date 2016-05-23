@@ -140,3 +140,18 @@ func defaultPackagePath(packagePath string) string {
 
 	return finalDir
 }
+
+// TODO needs tests
+func absPathToProject(workingDirectory string) string {
+	if workingDirectory == "" {
+		workingDirectory = "."
+	}
+
+	directoryPath, err := filepath.Abs(workingDirectory)
+
+	if err != nil {
+		panic(err)
+	}
+
+	return directoryPath
+}
