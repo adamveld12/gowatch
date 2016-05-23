@@ -28,7 +28,7 @@ type Config struct {
 }
 
 // Start starts running GoWatch on a specified package directory
-func Start(config Config) error {
+func Start(config Config) {
 	config.PackagePath = defaultPackagePath(config.PackagePath)
 	config.OutputName = defaultArtifactOutputName(config.PackagePath, config.OutputName)
 	config.Wait = defaultWait(config.Wait)
@@ -43,8 +43,6 @@ func Start(config Config) error {
 		config.Wait,
 		config.IgnorePaths,
 		config.Debug)
-
-	return nil
 }
 
 func startWatch(projectPath, outputName, appArgs string,
