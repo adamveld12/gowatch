@@ -15,28 +15,20 @@ import (
 )
 
 func build(projectDirectory string, outputName string) bool {
-	gwl.Debugln("\tbuilding", outputName)
-	gwl.Debugln("\t@ dir", projectDirectory)
-	cmd := exec.Command("go", "build", "-o", outputName)
-	cmd.Dir = projectDirectory
-	cmd.Env = os.Environ()
-
-	cmd.Stdin = os.Stdin
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-
-	if err := cmd.Run(); err != nil {
-		return false
-	}
-
-	return true
+	gwl.Debug("\tbuilding", outputName)
+	gwl.Debug("\t@ dir", projectDirectory)
+	return runCmd(projectDirectory, "go", "build", "-o", outputName)
 }
 
 func test(projectDirectory string) bool {
-	gwl.LogDebug("testing code...")
+	gwl.Debug("testing code...")
+	return runCmd(projectDirectory, "go", "test")
+}
 
-	cmd := exec.Command("go", "test")
-	cmd.Dir = projectDirectory
+func runCmd(pwd, command string, args ...string) bool {
+	cmd := exec.Command(command, args...)
+
+	cmd.Dir = pwd
 	cmd.Env = os.Environ()
 
 	cmd.Stdin = os.Stdin
@@ -44,7 +36,6 @@ func test(projectDirectory string) bool {
 	cmd.Stderr = os.Stderr
 
 	if err := cmd.Run(); err != nil {
-		gwl.LogDebug("test failures: ", err)
 		return false
 	}
 
@@ -52,14 +43,14 @@ func test(projectDirectory string) bool {
 }
 
 func lint(projectDirectory string) bool {
-	gwl.LogDebug("linting code...")
+	gwl.Debug("linting code...")
 	lint := &linter.Linter{}
 
 	files := walkFilesForLinting(projectDirectory)
 
 	lintErrors := false
 	for k, v := range files {
-		gwl.LogDebug("linting package %s", k)
+		gwl.Debug("linting package %s", k)
 
 		problems, err := lint.LintFiles(v)
 
@@ -68,14 +59,14 @@ func lint(projectDirectory string) bool {
 			lintErrors = true
 		} else if len(problems) > 0 {
 
-			gwl.LogDebug("lint issues found")
+			gwl.Debug("lint issues found")
 			color.Yellow("%d lint issue(s) found in %s\n\n", len(problems), k)
 			for i, p := range problems {
 				position := p.Position
 				fileWithPackage := strings.Trim(strings.TrimPrefix(position.Filename, projectDirectory), "/")
 				lintInfo := strings.Split(p.String(), "\n")
 
-				gwl.LogDebug("%d out of 3", len(lintInfo))
+				gwl.Debug("%d out of 3", len(lintInfo))
 
 				readableLintError := ""
 

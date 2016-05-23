@@ -51,7 +51,7 @@ func Execute(projectDirectory, outputName, appArguments string, shouldTest, shou
 		handle.start(run(projectDirectory, outputName, appArguments))
 	}
 
-	gwl.LogDebug("build steps completed")
+	gwl.Debug("build steps completed")
 
 	return handle
 }

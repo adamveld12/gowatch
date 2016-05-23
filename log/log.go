@@ -1,12 +1,26 @@
 package log
 
 import (
-	"fmt"
 	"log"
 	"os"
 
 	"github.com/fatih/color"
 	"github.com/hashicorp/logutils"
+)
+
+var (
+	errC   = color.New(color.FgRed)
+	debugC = color.New(color.FgMagenta)
+	infoC  = color.New(color.FgCyan)
+
+	errSprintFunc   = errC.SprintFunc()
+	infoSprintFunc  = infoC.SprintFunc()
+	debugSprintFunc = debugC.SprintFunc()
+
+	errSprintFmt   = errC.SprintfFunc()
+	infoSprintFmt  = infoC.SprintfFunc()
+	debugSprintFmt = debugC.SprintfFunc()
+	logger         *log.Logger
 )
 
 // Setup initializes the logging system
@@ -23,35 +37,39 @@ func Setup(debug bool) {
 		Writer:   os.Stderr,
 	}
 
-	log.SetOutput(filter)
+	logger = log.New(filter, "", log.Ltime)
 }
 
-// Errorln prints values with red text terminated with a new line
-func Errorln(a ...interface{}) {
-	log.Println("[ERROR]", color.RedString(fmt.Sprintln(a...)))
+// Error prints values with red text with a format string
+func Error(a ...interface{}) {
+	write("[ERROR]", errSprintFunc(a...))
 }
 
-// Infoln prints values with cyan text terminated with a new line
-func Infoln(a ...interface{}) {
-	log.Println("[INFO]", color.CyanString(fmt.Sprintln(a...)))
+// Info prints values with Cyan text with a format string
+func Info(a ...interface{}) {
+	write("[INFO]", infoSprintFunc(a...))
 }
 
-// Debugln prints values with magenta text terminated with a new line
-func Debugln(a ...interface{}) {
-	log.Println("[DEBUG]", color.MagentaString(fmt.Sprintln(a...)))
+// Debug prints values with magenta text with a format string
+func Debug(a ...interface{}) {
+	write("[DEBUG]", debugSprintFunc(a...))
 }
 
-// LogError prints values with red text with a format string
-func LogError(format string, a ...interface{}) {
-	log.Println("[ERROR]", color.RedString(format, a...))
+// Errorf prints values with red text with a format string
+func Errorf(format string, a ...interface{}) {
+	write("[ERROR]", errSprintFmt(format, a...))
 }
 
-// LogInfo prints values with Cyan text with a format string
-func LogInfo(format string, a ...interface{}) {
-	log.Println("[INFO]", color.CyanString(format, a...))
+// Infof prints values with Cyan text with a format string
+func Infof(format string, a ...interface{}) {
+	write("[INFO]", infoSprintFmt(format, a...))
 }
 
-// LogDebug prints values with magenta text with a format string
-func LogDebug(format string, a ...interface{}) {
-	log.Println("[DEBUG]", color.MagentaString(format, a...))
+// Debugf prints values with magenta text with a format string
+func Debugf(format string, a ...interface{}) {
+	write("[DEBUG]", debugSprintFmt(format, a...))
+}
+
+func write(level, msg string) {
+	logger.Println(level, msg)
 }

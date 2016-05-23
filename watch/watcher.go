@@ -21,7 +21,7 @@ func StartWatch(dir string, ignorePaths []string) *WatchHandle {
 
 	for _, filteredDir := range filterDirectories(dir, ignorePaths) {
 		if err := watcher.Add(filteredDir); err != nil {
-			gwl.Debugln("error adding watched dir", filteredDir, err.Error())
+			gwl.Debug("error adding watched dir", filteredDir, err.Error())
 		}
 	}
 
@@ -64,11 +64,11 @@ func shouldIgnore(file string, ignorePaths []string) bool {
 		matched, err := filepath.Match(strings.Replace(pattern, "/", "", -1), strings.Replace(file, "/", "", -1))
 
 		if err != nil {
-			gwl.LogError(err.Error())
+			gwl.Error(err.Error())
 		}
 
 		if matched && err == nil {
-			gwl.LogDebug("\tIgnore %s -> %s\n", pattern, file)
+			gwl.Debug("\tIgnore %s -> %s\n", pattern, file)
 			return true
 		}
 	}

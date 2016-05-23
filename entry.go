@@ -59,11 +59,11 @@ func startWatch(projectPath, outputName, appArgs string,
 
 	if outputName == "" {
 		outputName = filepath.Base(projectPath)
-		gwl.LogDebug("using", outputName, "as the output name")
+		gwl.Debug("using", outputName, "as the output name")
 	}
 
 	for {
-		gwl.LogDebug("---Starting app monitor---")
+		gwl.Debug("---Starting app monitor---")
 		time.Sleep(wait)
 		execHandle := project.Execute(projectPath,
 			outputName,
@@ -71,18 +71,18 @@ func startWatch(projectPath, outputName, appArgs string,
 			shouldTest,
 			shouldLint)
 
-		gwl.LogDebug("---Setting up watch cb---")
+		gwl.Debug("---Setting up watch cb---")
 		watchHandle.Subscribe(func(fileName string) {
 			if !execHandle.Halted() {
-				gwl.LogError("attempting to kill process")
+				gwl.Error("attempting to kill process")
 				execHandle.Kill(nil)
-				gwl.LogDebug("exiting file watch routine in main")
+				gwl.Debug("exiting file watch routine in main")
 			}
 		})
 
-		gwl.LogDebug("waiting on app to exit")
+		gwl.Debug("waiting on app to exit")
 		err := execHandle.Error()
-		gwl.LogDebug("---App exited---")
+		gwl.Debug("---App exited---")
 		watchHandle.Subscribe(nil)
 
 		exitedSuccessfully := err == nil || err == project.ErrorAppKilled
@@ -99,7 +99,7 @@ func startWatch(projectPath, outputName, appArgs string,
 				close(sync)
 				watchHandle.Subscribe(nil)
 			})
-			gwl.LogDebug("waiting on file notification")
+			gwl.Debug("waiting on file notification")
 			<-sync
 		}
 	}
