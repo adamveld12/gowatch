@@ -1,6 +1,9 @@
 package project
 
 import (
+	"os"
+	"os/exec"
+	"path/filepath"
 	"sync"
 
 	gwl "github.com/adamveld12/gowatch/log"
@@ -48,10 +51,41 @@ func Execute(projectDirectory, outputName, appArguments string, shouldTest, shou
 	} else if shouldTest && !test(projectDirectory) {
 		handle.Kill(ErrorTestFailed)
 	} else {
-		handle.start(run(projectDirectory, outputName, appArguments))
+		handle.start(buildCmd(projectDirectory, outputName, appArguments))
 	}
 
 	gwl.Debug("build steps completed")
 
 	return handle
+}
+
+func buildCmd(projectDirectory, programName string, arguments ...string) *exec.Cmd {
+	command := ""
+
+	if programName != "" {
+		command = programName
+	} else {
+		_, command = filepath.Split(projectDirectory)
+	}
+
+	cmd := exec.Command("./"+command, arguments...)
+
+	cmd.Dir = projectDirectory
+	cmd.Env = os.Environ()
+
+	cmd.Stdin = os.Stdin
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+
+	return cmd
+}
+
+func runCmd(pwd, command string, args ...string) bool {
+	cmd := buildCmd(pwd, command, args...)
+
+	if err := cmd.Run(); err != nil {
+		return false
+	}
+
+	return true
 }

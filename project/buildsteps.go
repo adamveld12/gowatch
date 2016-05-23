@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
 
@@ -23,23 +22,6 @@ func build(projectDirectory string, outputName string) bool {
 func test(projectDirectory string) bool {
 	gwl.Debug("testing code...")
 	return runCmd(projectDirectory, "go", "test")
-}
-
-func runCmd(pwd, command string, args ...string) bool {
-	cmd := exec.Command(command, args...)
-
-	cmd.Dir = pwd
-	cmd.Env = os.Environ()
-
-	cmd.Stdin = os.Stdin
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-
-	if err := cmd.Run(); err != nil {
-		return false
-	}
-
-	return true
 }
 
 func lint(projectDirectory string) bool {

@@ -16,4 +16,4 @@ test:
 
 test_cover:
 	go test -coverprofile coverage.out
-	go tool coverage -html coverage.out
+	go tool cover -html coverage.out

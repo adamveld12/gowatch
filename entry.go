@@ -105,7 +105,6 @@ func startWatch(projectPath, outputName, appArgs string,
 	}
 }
 
-// TODO needs tests
 func defaultArtifactOutputName(packagePath, outputName string) string {
 	if outputName == "" {
 		return filepath.Base(packagePath)
@@ -114,11 +113,9 @@ func defaultArtifactOutputName(packagePath, outputName string) string {
 	return outputName
 }
 
-// TODO needs tests
 func defaultWait(waitTime time.Duration) time.Duration {
-	waitMillis := time.Duration(waitTime.Nanoseconds()) * time.Millisecond
 
-	if waitMillis < 500 {
+	if waitTime/time.Millisecond < 500 {
 		return time.Millisecond * 500
 	} else if waitTime.Seconds() > 10 {
 		return time.Second * 10
@@ -127,7 +124,6 @@ func defaultWait(waitTime time.Duration) time.Duration {
 	return waitTime
 }
 
-// TODO needs tests
 func defaultPackagePath(packagePath string) string {
 	finalDir := packagePath
 	if packagePath == "" {
@@ -139,19 +135,4 @@ func defaultPackagePath(packagePath string) string {
 	}
 
 	return finalDir
-}
-
-// TODO needs tests
-func absPathToProject(workingDirectory string) string {
-	if workingDirectory == "" {
-		workingDirectory = "."
-	}
-
-	directoryPath, err := filepath.Abs(workingDirectory)
-
-	if err != nil {
-		panic(err)
-	}
-
-	return directoryPath
 }

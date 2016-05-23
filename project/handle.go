@@ -1,9 +1,7 @@
 package project
 
 import (
-	"os"
 	"os/exec"
-	"path/filepath"
 	"sync"
 
 	gwl "github.com/adamveld12/gowatch/log"
@@ -109,25 +107,4 @@ func (h *ExecuteHandle) start(cmd *exec.Cmd) {
 		h.Kill(err)
 	}()
 	<-waiter
-}
-
-func run(projectDirectory, programName string, arguments string) *exec.Cmd {
-	command := ""
-
-	if programName != "" {
-		command = programName
-	} else {
-		_, command = filepath.Split(projectDirectory)
-	}
-
-	cmd := exec.Command("./"+command, arguments)
-
-	cmd.Dir = projectDirectory
-	cmd.Env = os.Environ()
-
-	cmd.Stdin = os.Stdin
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-
-	return cmd
 }
