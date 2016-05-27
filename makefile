@@ -11,9 +11,13 @@ clean:
 	rm -rf ./gowatch
 	rm -rf ./coverage.out
 
-test:
+tests:
 	go test -v -cover
 
 test_cover:
 	go test -coverprofile coverage.out
 	go tool cover -html coverage.out
+
+release:
+	cd ./bin
+	gox github.com/adamveld12/gowatch/cli/gowatch

@@ -4,4 +4,4 @@ gowatch
 coverage.out
 true
 test/test
-bin
+bin/

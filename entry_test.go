@@ -63,6 +63,3 @@ func Test_defaultPackagePath(t *testing.T) {
 		}
 	}
 }
-
-func Test_absPathToProject(t *testing.T) {
-}

@@ -32,7 +32,7 @@ func lint(projectDirectory string) bool {
 
 	lintErrors := false
 	for k, v := range files {
-		gwl.Debug("linting package %s", k)
+		gwl.Debug("linting package", k)
 
 		problems, err := lint.LintFiles(v)
 
@@ -40,7 +40,6 @@ func lint(projectDirectory string) bool {
 			color.Red("[ERROR]", err)
 			lintErrors = true
 		} else if len(problems) > 0 {
-
 			gwl.Debug("lint issues found")
 			color.Yellow("%d lint issue(s) found in %s\n\n", len(problems), k)
 			for i, p := range problems {
@@ -48,7 +47,7 @@ func lint(projectDirectory string) bool {
 				fileWithPackage := strings.Trim(strings.TrimPrefix(position.Filename, projectDirectory), "/")
 				lintInfo := strings.Split(p.String(), "\n")
 
-				gwl.Debug("%d out of 3", len(lintInfo))
+				gwl.Debugf("%d out of 3", len(lintInfo))
 
 				readableLintError := ""
 
@@ -66,6 +65,8 @@ func lint(projectDirectory string) bool {
 					color.Yellow(lintLineOutput)
 				}
 			}
+		} else {
+			gwl.Debug("no lint issues found for", k)
 		}
 	}
 
@@ -73,7 +74,7 @@ func lint(projectDirectory string) bool {
 }
 
 func walkFilesForLinting(packagePath string) map[string]map[string][]byte {
-	files := make(map[string]map[string][]byte)
+	pkgs := make(map[string]map[string][]byte)
 	filepath.Walk(packagePath, func(p string, info os.FileInfo, err error) error {
 		if filepath.Ext(p) == ".go" {
 			fileWithPackage := strings.TrimPrefix(p, packagePath)
@@ -83,19 +84,19 @@ func walkFilesForLinting(packagePath string) map[string]map[string][]byte {
 				packageName = "main"
 			}
 
-			files[packageName] = make(map[string][]byte)
-
-			f, err := os.Open(p)
-			if err != nil {
-				return err
+			files, ok := pkgs[packageName]
+			if !ok {
+				files = make(map[string][]byte)
 			}
+			pkgs[packageName] = files
 
-			if files[packageName][p], err = ioutil.ReadAll(f); err != nil {
+			files[p], err = ioutil.ReadFile(p)
+			if err != nil {
 				return err
 			}
 		}
 		return nil
 	})
 
-	return files
+	return pkgs
 }
