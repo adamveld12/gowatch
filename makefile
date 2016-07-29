@@ -9,7 +9,7 @@ build: clean gowatch
 clean:
 	rm -rf ./gowatch ./coverage.out
 
-test:
+tests:
 	go test -v -cover
 
 cover: clean coverage.out
@@ -17,6 +17,10 @@ cover: clean coverage.out
 
 coverage.out:
 	go test -coverprofile coverage.out
+
+release:
+	cd ./bin
+	gox github.com/adamveld12/gowatch/cli/gowatch
 
 .PHONY: cover test clean lint dev
 
