@@ -7,7 +7,9 @@ giving you hot reload like behavior during your dev session.
 
 I wrote this to make things easier on me when I'm iterating and learning to golang, so its pretty bare bones and simplistic.
 
-The file watching is done using [fsnotify](https://github.com/go-fsnotify/fsnotify).
+![gowatch demo](/gowatch_demo.gif)
+
+
 
 ## Usage
 
