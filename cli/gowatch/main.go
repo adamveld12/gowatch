@@ -27,15 +27,15 @@ func init() {
 	flag.Usage = func() {
 		fmt.Println("gowatch [options] <path to main package>")
 		fmt.Printf("options\n%s\n", strings.Join([]string{
-			color.GreenString("\t\t-output") + "=\"\": the name of the program to output",
-			color.GreenString("\t\t-args") + "=\"\": arguments to pass to the underlying app",
-			color.GreenString("\t\t-debug") + "=false: enabled debug print statements",
-			color.GreenString("\t\t-ignore") + "=\".git/*,node_modules/*\": comma delimited paths to ignore in the file watcher",
-			color.GreenString("\t\t-lint") + "=true: run go lint on reload",
-			color.GreenString("\t\t-onerror") + "=true: If the app should restart if a lint/test/build/non-zero exit code occurs",
-			color.GreenString("\t\t-onexit") + "=true: If the app sould restart on exit, regardless of exit code",
-			color.GreenString("\t\t-test") + "=true: run go test on reload",
-			color.GreenString("\t\t-wait") + "=2s: # seconds to wait before restarting",
+			color.GreenString(" -output") + "=\"\": the name of the program to output",
+			color.GreenString(" -args") + "=\"\": arguments to pass to the underlying app",
+			color.GreenString(" -debug") + "=false: enabled debug print statements",
+			color.GreenString(" -ignore") + "=\".git/*,node_modules/*\": comma delimited paths to ignore in the file watcher",
+			color.GreenString(" -lint") + "=true: run go lint on reload",
+			color.GreenString(" -onerror") + "=true: If the app should restart if a lint/test/build/non-zero exit code occurs",
+			color.GreenString(" -onexit") + "=true: If the app sould restart on exit, regardless of exit code",
+			color.GreenString(" -test") + "=true: run go test on reload",
+			color.GreenString(" -wait") + "=2s: # seconds to wait before restarting",
 		}, "\n"))
 	}
 }

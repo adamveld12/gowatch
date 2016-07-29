@@ -9,13 +9,16 @@ I wrote this to make things easier on me when I'm iterating and learning to gola
 
 ![gowatch demo](/gowatch_demo.gif)
 
-
 ## Usage
 
-Simply go to your desired directory (for example, $GOPATH/src/myBadassGoProject) and run the following:
+Install by doing:
+```
+go get -u github.com/adamveld12/gowatch
+```
 
-```sh
-  gowatch [options]
+Then simply run:
+```
+  gowatch [options] <path to main package>
 ```
 
 ### Options:
@@ -26,15 +29,15 @@ Note: the option that is set on each argument below is the current default if no
 
 `-args=""`CLI arguments passed to the app
 
-`-ignore=[]`  A comma delimited list of globs for the file watcher to ignore, right now its more like a file extension glob since that's all I really use it for (ie \*.html or \*.css)
+`-ignore=".git/*,node_modules/*"`  A comma delimited list of globs for the file watcher to ignore, right now its more like a file extension glob since that's all I really use it for (ie \*.html or \*.css)
 
  `-onexit=true`  If the app should restart on exit, regardless of exit code (beware, buggy)
 
 `-onerror=true` If the app should restart on lint/test/build/non-zero exit code (beware, also buggy)
 
-`-wait=1s` How long to wait before starting up the build after an exit.
+`-wait=2s` How long to wait before starting up the build after an exit.
 
- `-test=false` Should tests be run on reload
+ `-test=true` Should tests be run on reload
 
  `-lint=true` Should the source be linted on reload
 
