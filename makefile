@@ -4,20 +4,25 @@ dev: build
 lint: 
 	find -f ./**/*.go | xargs -n 1 golint
 
-build: clean
-	go build ./cli/gowatch
+build: clean gowatch
 
 clean:
-	rm -rf ./gowatch
-	rm -rf ./coverage.out
+	rm -rf ./gowatch ./coverage.out
 
 tests:
 	go test -v -cover
 
-test_cover:
-	go test -coverprofile coverage.out
+cover: clean coverage.out
 	go tool cover -html coverage.out
+
+coverage.out:
+	go test -coverprofile coverage.out
 
 release:
 	cd ./bin
 	gox github.com/adamveld12/gowatch/cli/gowatch
+
+.PHONY: cover test clean lint dev
+
+gowatch:
+	go build ./cli/gowatch
