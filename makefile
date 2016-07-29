@@ -7,7 +7,7 @@ lint:
 build: clean gowatch
 
 clean:
-	rm -rf ./gowatch ./coverage.out
+	rm -rf ./gowatch ./coverage.out ./bin
 
 tests:
 	go test -v -cover
@@ -15,14 +15,20 @@ tests:
 cover: clean coverage.out
 	go tool cover -html coverage.out
 
-coverage.out:
-	go test -coverprofile coverage.out
+release: gox ./bin/
+	gox -rebuild -arch="amd64" -output="./bin/{{.Dir}}_{{.OS}}" github.com/adamveld12/gowatch/cli/gowatch
 
-release:
-	cd ./bin
-	gox github.com/adamveld12/gowatch/cli/gowatch
+.PHONY: cover test clean lint dev release
 
-.PHONY: cover test clean lint dev
+./bin/:
+	mkdir ./bin
+
+gox:
+	go get github.com/mitchellh/gox
 
 gowatch:
 	go build ./cli/gowatch
+
+coverage.out:
+	go test -coverprofile coverage.out
+
