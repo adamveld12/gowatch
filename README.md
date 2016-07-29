@@ -10,7 +10,6 @@ I wrote this to make things easier on me when I'm iterating and learning to gola
 ![gowatch demo](/gowatch_demo.gif)
 
 
-
 ## Usage
 
 Simply go to your desired directory (for example, $GOPATH/src/myBadassGoProject) and run the following:
@@ -29,9 +28,9 @@ Note: the option that is set on each argument below is the current default if no
 
 `-ignore=[]`  A comma delimited list of globs for the file watcher to ignore, right now its more like a file extension glob since that's all I really use it for (ie \*.html or \*.css)
 
- `-onexit=true`  If the app should restart on exit, regardless of exit code
+ `-onexit=true`  If the app should restart on exit, regardless of exit code (beware, buggy)
 
-`-onerror=true` If the app should restart on lint/test/build/non-zero exit code
+`-onerror=true` If the app should restart on lint/test/build/non-zero exit code (beware, also buggy)
 
 `-wait=1s` How long to wait before starting up the build after an exit.
 
@@ -46,11 +45,10 @@ Note: the option that is set on each argument below is the current default if no
 
 ## Notes
 
-The linter will not stop the app from running if the lint error has a low confidence value (e.g. for missing package level comments).
+The linter will not stop the app from running if the lint error has a low confidence value (e.g. for missing package level comments). It would be better if a confidence threshold value could be passed.
 
 Process signals (Interrupt, Kill) are not passed to the child process, I ran into a lot of issues with this but I might figure it out in the near future.
 
-I have not had the chance to test this with multi level packages (e.g. database/sql/driver or net/http) at the moment.
 
 ## License:
 
